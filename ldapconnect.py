@@ -3,14 +3,12 @@ import ldap
 import os
 import sys
 
+def open_connection(username,password,serverURI,ldaproot):
+    """ Open connection to the LDAP server
 
-## Magic credentials from Beau
-username = "app-test"
-password = "pZ98j3pZ98j3"
-
-def open_connection():
+    """
     try:
-        l = ldap.initialize('ldaps://sanjuan.synapsedev.com:636')
+        l = ldap.initialize(serverURI)
     
         l.set_option(ldap.OPT_X_TLS_DEMAND, True)
         l.set_option(ldap.OPT_REFERRALS, 0)
@@ -23,7 +21,7 @@ def open_connection():
  
         l.protocol_version = ldap.VERSION3
  
-        l.simple_bind_s("SYNAPSEDEV\%s" % username, password)
+        l.simple_bind_s(ldaproot + "\\" + username, password)
 
     except ldap.LDAPError, e:
         print "An LDAP exception was encountered opening the connection: %s" % e
@@ -31,15 +29,21 @@ def open_connection():
     return l
 
 def close_connection(l):
+    """ Close connection to the LDAP server
+
+    """
     try:
          l.unbind()
     except ldap.LDAPError, e:
         print "An LDAP exception was encountered while closing connection: %s" % e
 
 
-def get_user_ldap_info():
+def get_user_ldap_info(username,password,serverURI,ldaproot):
+    """ Extract user information from our ldap server
 
-    l = open_connection()
+    """
+
+    l = open_connection(username,password,serverURI,ldaproot)
  
     # Example search to find a specific username:
     r = l.search_s("OU=MyBusiness,DC=synapsedev,DC=com", 
@@ -47,6 +51,7 @@ def get_user_ldap_info():
                    "(sAMAccountName=*)",
                    ['cn','sAMAccountName']
                    )
+
     close_connection(l)
 
     return r
