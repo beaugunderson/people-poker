@@ -4,8 +4,8 @@ import MySQLdb
 import daemon
 import sys
 import time
-
 import ConfigParser
+import datetime
 
 def update_user_status():
     """ Update database with current user status.
@@ -16,7 +16,7 @@ def update_user_status():
     
     """
 
-    # Read config file 
+    # Read config file each time function is called
     config = ConfigParser.ConfigParser()
     config.read("config.ini")
 
@@ -25,7 +25,9 @@ def update_user_status():
         config.get('LDAPInfo','username'),
         config.get('LDAPInfo','password'),
         config.get('LDAPInfo','serverURI'),
-        config.get('LDAPInfo','ldaproot'))
+        config.get('LDAPInfo','ldaproot'),
+        config.get('LDAPInfo','ou_to_search')
+        )
 
     # Get all devices currently active
     active_devices = arpquery.getArpCaches(
@@ -45,12 +47,11 @@ def update_user_status():
 
     cursor = dbconn.cursor()
 
-    for dn,attributes in names:
-        userid = attributes["sAMAccountName"]
+    for userid,name in names:
         user_devices = cursor.execute("""
             SELECT deviceaddr FROM userdevices 
             WHERE userid = %s
-            """,  (userid) )
+            """,  userid )
         
         user_status = 'OUT'
         devs = cursor.fetchall()
@@ -65,20 +66,28 @@ def update_user_status():
         cursor.execute("""
             SELECT status FROM current_user_status
             WHERE userid = %s
-            """,  (userid) )
-        print "PROCESSING" , user_status , userid
+            """,  userid )
+
+        #TBD Need to be more specific about semantics of last_seen and IN/OUT
+        now = datetime.datetime.now()
         if cursor.fetchall() == () :
             ## User did not exist in table yet. Add user.
             cursor.execute("""INSERT INTO current_user_status 
-                              VALUES (%s, %s)
-                           """, (userid[0],user_status) )
+                              VALUES (%s, %s, %s)
+                           """, (userid,user_status,now) )
         else:
             #User did exist, update row
             cursor.execute("""UPDATE current_user_status 
-                              SET status = %s 
+                              SET status = %s, last_seen = %s 
                               WHERE userid = %s 
-                           """ , (user_status,userid[0]) )
+                           """ , (user_status,now, userid) )
 
+    #Sleep until time to poll again
+    try:
+        time.sleep(float(config.get("PollInfo" , "frequency_seconds")))
+    except ValueError:
+        #Poll every minute by default
+        time.sleep(60)
 
 def people_poker_loop():
     """ Main loop for the people poker.
@@ -86,16 +95,14 @@ def people_poker_loop():
     """
     while True:
         print "Querying status"
-        ## TBD read config file
         update_user_status()
-        time.sleep(10)
-        
+
 
 def people_poker_daemon():
     """ Run people poker as daemon process 
 
     """
-    print "Starting Peoplepoker daemon"
+    print "Starting PeoPlePoker daemon"
     myerr = open('/Users/peter/Workspace/peoplepoker/err.log','w+')
     myout = open('/Users/peter/Workspace/peoplepoker/out.log','w+')
 

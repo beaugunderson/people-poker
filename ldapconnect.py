@@ -38,7 +38,7 @@ def close_connection(l):
         print "An LDAP exception was encountered while closing connection: %s" % e
 
 
-def get_user_ldap_info(username,password,serverURI,ldaproot):
+def get_user_ldap_info(username,password,serverURI,ldaproot,ou_to_search):
     """ Extract user information from our ldap server
 
     """
@@ -46,13 +46,17 @@ def get_user_ldap_info(username,password,serverURI,ldaproot):
     l = open_connection(username,password,serverURI,ldaproot)
  
     # Example search to find a specific username:
-    r = l.search_s("OU=MyBusiness,DC=synapsedev,DC=com", 
+    r = l.search_s(ou_to_search,
                    ldap.SCOPE_SUBTREE, 
                    "(sAMAccountName=*)",
                    ['cn','sAMAccountName']
                    )
 
+    usernames = []
+    for entry,attrib in r:
+        usernames.append( (attrib['sAMAccountName'][0],attrib['cn'][0]) )
+
     close_connection(l)
 
-    return r
+    return usernames
 
