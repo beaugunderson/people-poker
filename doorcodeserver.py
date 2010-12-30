@@ -25,7 +25,7 @@ def start_server():
 
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind((host, port)) 
+        s.bind((host, port))
     except IOError:
         print "Could not open socket"
         return
@@ -48,13 +48,10 @@ def start_server():
         except IOError:
             print "Could not accept connection from client"
 
-
 def process_data(userid):
-
     try:
         config = ConfigParser.ConfigParser()
         config.read("config.ini")
-        
 
         # Validate the data to be < 30 characters, and only digits and ascii characters
         if len(userid)<=30 and re.match("^[a-z0-9A-Z_.]*$",userid):
@@ -73,7 +70,6 @@ def process_data(userid):
                               SET status = "IN", last_seen = %s 
                               WHERE userid = %s 
                            """ , (now, userid) )
-
         else:
             #data recieved did not match our format
             print "Rejected username" , userid
@@ -81,7 +77,6 @@ def process_data(userid):
         print "Could not read config file"
     except MySQLdb.Error:
         print "Could not access MySQL database"
-
 
 if __name__ == "__main__":
     start_server()

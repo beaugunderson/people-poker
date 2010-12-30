@@ -4,7 +4,6 @@ import re
 
 def connect_and_send_userid(userid):
     # Read config file
-
     try:
         config = ConfigParser.ConfigParser()
         config.read('config.ini')
@@ -25,8 +24,6 @@ def connect_and_send_userid(userid):
     except IOError:
         print "Could not connect to socket"
         return
-    
-
 
 if __name__ == "__main__":
     connect_and_send_userid("peter")
