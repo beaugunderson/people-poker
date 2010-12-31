@@ -42,13 +42,14 @@ def update_user_status():
 
     cursor = dbconn.cursor()
 
-    for userid,name in names:
+    for userid, name in names:
         user_devices = cursor.execute("""
             SELECT deviceaddr FROM userdevices
             WHERE userid = %s
             """,  userid )
 
         user_status = 'OUT'
+
         devs = cursor.fetchall()
         # Iterate through all the user's devices, and see 
         # if any of them are active
@@ -65,6 +66,7 @@ def update_user_status():
 
         #TBD Need to be more specific about semantics of last_seen and IN/OUT
         now = datetime.datetime.now()
+
         if cursor.fetchall() == () :
             ## User did not exist in table yet. Add user.
             cursor.execute("""INSERT INTO current_user_status
@@ -79,7 +81,7 @@ def update_user_status():
 
     #Sleep until time to poll again
     try:
-        time.sleep(float(config.get("PollInfo" , "frequency_seconds")))
+        time.sleep(float(config.get("poller" , "frequency_seconds")))
     except ValueError:
         #Poll every minute by default
         time.sleep(60)
@@ -88,8 +90,8 @@ def people_poker_loop():
     """ Main loop for the people poker. """
     while True:
         print "Querying status"
-        update_user_status()
 
+        update_user_status()
 
 def people_poker_daemon():
     """ Run people poker as daemon process """
