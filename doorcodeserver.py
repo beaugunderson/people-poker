@@ -10,76 +10,81 @@ from ConfigParser import SafeConfigParser
 # TODO Refactor to use a higher-level configuration library
 # TODO Refactor to use SqlAlchemy
 
-def start_server():
-    """ IPv4 server to receive occasional door code updates.
+class DoorCode(StatusProvider):
+    def __init__(self, options=None):
+        pass
 
-    The packet sent by client should be a simple string of the username
-    """
+    def start_server(self):
+        """
+        A ZeroMQ based server that will receive updates from the door server.
+        """
 
-    context = zmq.Context()
+        context = zmq.Context()
 
-    # Provide default values
-    host = ''
-    port = 0
+        # Provide default values
+        host = ''
+        port = 0
 
-    try:
-        # Read config file
-        config = SafeConfigParser()
-        config.read("config.ini")
-
-        uri = config.get("DOOR_CODE", "server-uri")
-    except ConfigParser.Error:
-        print "Could not read config file"
-
-       	sys.exit(1) 
-
-    try:
-        socket = context.socket(zmq.REP)
-        socket.bind(uri)
-    except zmq.ZMQError as e:
-        print "Could not bind to socket using %s: %s" % (uri, e)
-
-        sys.exit(1)
-
-    print "zme.REP socket opened at %s" % uri
-
-    while True:
         try:
-            msg = socket.recv_json()
+            # Read config file
+            config = SafeConfigParser()
+            config.read("config.ini")
 
-            if msg.userid:
-                print "Received data: %s" % msg
+            uri = config.get("door_code", "server_uri")
+        except ConfigParser.Error:
+            print "Could not read config file"
 
-                socket.send_json(process_data(msg))
-            else:
-                print "Received bad data, discarding"
-        except IOError:
-            print "Could not accept connection from client"
+            sys.exit(1)
 
-def process_data(msg):
-    try:
-        config = ConfigParser.ConfigParser()
-        config.read("config.ini")
+        try:
+            socket = context.socket(zmq.REP)
+            socket.bind(uri)
+        except zmq.ZMQError as e:
+            print "Could not bind to socket using %s: %s" % (uri, e)
 
-        dbconn = MySQLdb.connect(
-            host = config.get("DBInfo" , "host"),
-            user = config.get("DBInfo" , "user"),
-            passwd = config.get("DBInfo" , "password"),
-            db = config.get("DBInfo" , "dbname"))
+            sys.exit(1)
 
-        cursor = dbconn.cursor()
+        print "zme.REP socket opened at %s" % uri
 
-        now = datetime.datetime.now()
+        while True:
+            try:
+                msg = socket.recv_json()
 
-        # Assume user exists
-        cursor.execute("""UPDATE current_user_status 
-                          SET status = "IN", last_seen = %s 
-                          WHERE userid = %s 
-                       """ , (now, msg.userid))
+                if msg.userid:
+                    print "Received data: %s" % msg
 
-	return { 'Status': 'Success' }
-    except (ConfigParser.Error, MySQLdb.Error) as e:
-        return { 'Status': 'Failure', 'Exception': e }
+                    socket.send_json(process_data(msg))
+                else:
+                    print "Received bad data, discarding"
+            except IOError:
+                print "Could not accept connection from client"
+
+    def process_data(self, msg):
+        try:
+            config = ConfigParser.ConfigParser()
+            config.read("config.ini")
+
+            dbconn = MySQLdb.connect(
+                host = config.get("DBInfo" , "host"),
+                user = config.get("DBInfo" , "user"),
+                passwd = config.get("DBInfo" , "password"),
+                db = config.get("DBInfo" , "dbname"))
+
+            cursor = dbconn.cursor()
+
+            now = datetime.datetime.now()
+
+            # Assume user exists
+            cursor.execute("""UPDATE current_user_status 
+                              SET status = "IN", last_seen = %s 
+                              WHERE userid = %s 
+                           """ , (now, msg.userid))
+
+            return { 'Status': 'Success' }
+        except (ConfigParser.Error, MySQLdb.Error) as e:
+            return { 'Status': 'Failure', 'Exception': e }
 
 if __name__ == "__main__":
-    start_server()
+    server = DoorCode()
+
+    server.start_server()

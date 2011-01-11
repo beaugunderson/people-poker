@@ -5,46 +5,44 @@
 import os
 import re
 
-class Arp(Plugin):
+class Arp(StatusProvider):
+    def __init__(self, options=None):
+        pass
+
     def poll(self):
-        pass
+        mac_addresses = []
 
-    def serve(self):
-        pass
+        for device in devices_to_query:
+            mac_addresses += self._get_arp_cache(device)
 
-def getArpCaches(devices_to_query, snmp_community, snmp_arp_variable):
-    """ Query list of devices for active mac addresses. """
-    # Start with an empty list of mac addresses
-    mac_addrs = []
+    def _get_arp_cache(self, device):
+        """
+        Query a device for active mac addresses.
+        """
 
-    for device in devices_to_query:
         lines = os.popen("snmpwalk -c " + snmp_community + " " +
                device + " " + snmp_arp_variable)
 
+        mac_addresses = []
+
         for line in lines:
-            # Get the MAC address at end of each line and add it to our list
-            mac_addr = re.search('([0-9a-f:]*)$', line).group(0)
-            mac_addr = validateAndNormalizeMacAddr(mac_addr)
+            mac_address = re.search('([0-9a-f:]*)$', line).group(0)
+            mac_address = self.validate_and_normalize(mac_address)
 
-            if mac_addr != None:
-                mac_addrs.append(mac_addr)
+            if mac_address:
+                mac_addresses.append(mac_address)
 
-    # Now that we have a list of the active users, create a 
-    # set for fast lookup
-    return set(mac_addrs)
+        return set(mac_addresses)
 
-def validateAndNormalizeMacAddr(addr):
-    """ Validate and normalize addr into MAC lowercase, two digits per group.
+    def _validate_and_normalize(self, mac_address):
+        """
+        Validate that address is a valid MAC address. Normalize the address to
+        lowercase and two digits per group for easy string comparison.
+        """
 
-    Validate that address is a valid MAC address. Nomralize the address to
-    lowercase, and two digits per group for easy string comparison.
-    """
+        if re.match(r"(([0-9a-f]{1,2}:){5})([0-9a-f]{1,2})$", addr.lower()):
+            return ":".join([i.zfill(2) for i in addr.split(":")]).lower()
+        else:
+            print "Address " + addr + " not a valid MAC address"
 
-    #Validation
-    if re.match('(([0-9a-f]{1,2}:){5})([0-9a-f]{1,2})$',addr.lower()):
-        # Validated ok, now normalize
-        return ":".join([i.zfill(2) for i in addr.split(":")]).lower()
-    else:
-        print "Address " + addr + "not a valid MAC address"
-
-        return None
+            return None

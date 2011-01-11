@@ -7,12 +7,14 @@ def connect_and_send_userid(userid):
     try:
         config = ConfigParser.ConfigParser()
         config.read('config.ini')
+
         HOST = config.get('DOOR_CODE','serverURI')  # The remote host
         PORT = int(config.get('DOOR_CODE','port'))  # The same port as used by the server
 
     #Catch the baseclass exception only
     except ConfigParser.Error:
         print "Could not read config file"
+
         return
 
     try:
