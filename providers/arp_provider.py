@@ -1,31 +1,38 @@
 import os
 import re
 
+from provider import Provider
+
 class ArpProvider(Provider):
     provides = ['devices']
 
     def __init__(self, options=None):
         super(ArpProvider, self).__init__()
 
-    def poll(self):
         mac_addresses = []
 
-        for device in self.settings['devices_to_query']:
+        for device in self.settings['devices']:
+            print "Querying device: %s" % device
+
             mac_addresses += self._get_arp_cache(device)
+
+        self.devices = list(set(mac_addresses))
+        self.devices.sort()
 
     def _get_arp_cache(self, device):
         """
         Query a device for active MAC addresses.
         """
 
-        lines = os.popen("snmpwalk -c " + self.settings['snmp_community'] + " " +
-                device + " " + self.settings['snmp_arp_variable'])
+        command = "snmpwalk -v1 -c " + self.settings['community'] + " " + device + " " + self.settings['arp_variable']
+
+        lines = os.popen(command)
 
         mac_addresses = []
 
         for line in lines:
-            mac_address = re.search('([0-9a-f:]*)$', line).group(0)
-            mac_address = self.validate_and_normalize(mac_address)
+            mac_address = re.search('([0-9a-fA-F ]*)$', line).group(0).strip()
+            mac_address = self._validate_and_normalize(mac_address)
 
             if mac_address:
                 mac_addresses.append(mac_address)
@@ -38,9 +45,9 @@ class ArpProvider(Provider):
         lowercase and two digits per group for easy string comparison.
         """
 
-        if re.match(r"(([0-9a-f]{1,2}:){5})([0-9a-f]{1,2})$", addr.lower()):
-            return ":".join([i.zfill(2) for i in addr.split(":")]).lower()
+        if re.match(r"(([0-9a-f]{1,2}[: ]){5})([0-9a-f]{1,2})$", mac_address.lower()):
+            return ":".join([i.zfill(2) for i in re.split(r"[: ]", mac_address)]).lower()
         else:
-            print "Address " + addr + " not a valid MAC address"
+            print mac_address + " is not a valid MAC address"
 
             return None

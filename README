@@ -1,2 +1,4 @@
+pip install SqlAlchemy
 pip install python-ldap
 pip install configobj
+pip install python-daemon

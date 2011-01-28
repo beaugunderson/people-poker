@@ -1,118 +1,153 @@
-import arpquery
 import daemon
 import datetime
-import ldapconnect
-import MySQLdb
+import imp
+import os
+import pkgutil
 import sys
 import time
 
-def update_user_status():
-    """ Update database with current user status.
-    Query ARP cache for access points,
-    Get list of users from LDAP server
-    Update MYSQL database with the new status, inserting new users if necessary
-    """
+from collections import defaultdict
 
-    # Read config file each time function is called
+from models.user import User
+from models.device import Device
+from models.status import Status
 
-    # Get all users
-    names = ldapconnect.get_user_ldap_info(
-        self.settings[('ldap','username')],
-        self.settings[('ldap','password')],
-        self.settings[('ldap','server_uri')],
-        self.settings[('ldap','ldaproot')],
-        self.settings[('ldap','ou_to_search')])
+from sqlalchemy import create_engine, ForeignKey, and_
+from sqlalchemy.orm import backref, relationship, sessionmaker
 
-    # Get all devices currently active
-    active_devices = arpquery.getArpCaches(
-        #devices_to_query appears as comma separated list, so
-        # get rid of the commas.
-        self.settings[('snmp', 'devices_to_query')].split(','),
-        self.settings[('snmp', 'snmp_community')],
-        self.settings[('snmp', 'snmp_arp_variable')])
+from provider import Provider
 
-    dbconn = MySQLdb.connect(
-        host=self.settings[("database", "host")],
-        user=self.settings[("database", "user")],
-        passwd=self.settings[("database", "password")],
-        db=self.settings[("database", "dbname")])
+class PeoplePoker(object):
+    def __init__(self):
+        self.providers = self.get_providers()
 
-    cursor = dbconn.cursor()
+    def get_providers(self):
+        plugin_path = [os.path.join(sys.path[0], 'providers')]
 
-    for userid, name in names:
-        user_devices = cursor.execute("""
-            SELECT deviceaddr FROM userdevices
-            WHERE userid = %s
-            """,  userid )
+        for loader, name, ispkg in pkgutil.iter_modules(plugin_path):
+            file, pathname, desc = imp.find_module(name, plugin_path)
 
-        user_status = 'OUT'
+            imp.load_module(name, file, pathname, desc)
 
-        devs = cursor.fetchall()
+        subclasses = Provider.__subclasses__()
 
-        # Iterate through all the user's devices, and see
-        # if any of them are active
-        for dev in devs:
-            if dev[0] in active_devices:
-                user_status = 'IN'
-                break
+        providers = defaultdict(list)
 
-        ##Do the check to see if user exist in the current_user_status table
-        cursor.execute("""
-            SELECT status FROM current_user_status
-            WHERE userid = %s
-            """,  userid )
+        for subclass in subclasses:
+            print "Subclass %s provides %s" % (subclass, subclass.provides)
 
-        #TBD Need to be more specific about semantics of last_seen and IN/OUT
-        now = datetime.datetime.now()
+            for type in subclass.provides:
+                providers[type].append(subclass)
 
-        if cursor.fetchall() == () :
-            ## User did not exist in table yet. Add user.
-            cursor.execute("""INSERT INTO current_user_status
-                              VALUES (%s, %s, %s)
-                           """, (userid,user_status,now))
-        else:
-            #User did exist, update row
-            cursor.execute("""UPDATE current_user_status
-                              SET status = %s, last_seen = %s
-                              WHERE userid = %s
-                           """ , (user_status,now, userid))
+        return providers
 
-    #Sleep until time to poll again
-    try:
-        time.sleep(float(self.settings[("poller" , "frequency_seconds")]))
-    except ValueError:
-        #Poll every minute by default
-        time.sleep(60)
+    def update_user_status(self, sleep=True):
+        """
+        Update database with current user status.
+        Query ARP cache for access points,
+        Get list of users from LDAP server
+        Update MYSQL database with the new status, inserting new users if necessary
+        """
 
-def people_poker_loop():
-    """ Main loop for the people poker. """
-    while True:
-        print "Querying status"
+        from pprint import pprint
+        pprint(self.providers)
 
-        update_user_status()
+        user_providers = []
+        for provider in self.providers['users']:
+            user_providers.append(provider())
 
-def people_poker_daemon():
-    """ Run people poker as daemon process """
-    print "Starting People Poker daemon"
+        # TODO change device to status, must map to a user?
+        device_providers = []
+        for provider in self.providers['devices']:
+            device_providers.append(provider())
 
-    logs = os.path.join(os.getcwd(), "logs")
+        # Initialize the database
+        engine = create_engine('sqlite:///:memory:', echo=False)
 
-    try:
-        os.mkdir(logs)
-    except:
-        pass
+        from models import Base
+        Base.metadata.create_all(engine)
 
-    error_log = open(os.path.join(logs, 'error.log'), 'w+')
-    output_log = open(os.path.join(logs, 'output.log'), 'w+')
+        Session = sessionmaker()
+        Session.configure(bind=engine)
 
-    with daemon.DaemonContext(stdout=output_log,
-                              stderr=error_log,
-                              working_directory=os.getcwd()):
-        people_poker_loop()
+        session = Session()
 
-    # Clean up any open files.
-    error_log.close()
-    output_log.close()
+        for provider in device_providers:
+            print "Using provider: %s" % provider
+
+            for device in provider.devices:
+                print "Found device: %s" % device
+
+        for user in session.query(User):
+            print "Found user: %s" % user
+
+            user_status = 'OUT'
+
+            # Iterate through all the user's devices, and see
+            # if any of them are active
+            for device in user.devices:
+                print "User had device: %s" % device
+
+                for provider in device_providers:
+                    if device.mac_address in provider.devices:
+                        user_status = 'IN'
+
+                        break
+
+            try:
+                status = session.query(Status).filter(_and(Status.user==user, Status.provider==provider)).one()
+
+                status.provider = provider
+                status.status = user_status
+                status.update_time = now
+
+                session.commit()
+            except:
+                now = datetime.datetime.now()
+
+                status = Status(provider, user_status, now)
+
+                session.add(status)
+                session.commit()
+
+        if sleep:
+            time.sleep(60)
+
+    def people_poker_loop(self):
+        """ Main loop for the people poker. """
+        while True:
+            print "Querying status"
+
+            self.update_user_status()
+
+    def run_as_daemon(self):
+        """Run people poker as daemon process"""
+
+        print "Starting People Poker daemon"
+
+        logs = os.path.join(os.getcwd(), "logs")
+
+        try:
+            os.mkdir(logs)
+        except:
+            pass
+
+        error_log = open(os.path.join(logs, 'error.log'), 'w+')
+        output_log = open(os.path.join(logs, 'output.log'), 'w+')
+
+        providers = get_providers()
+
+        with daemon.DaemonContext(stdout=output_log,
+                                  stderr=error_log,
+                                  working_directory=os.getcwd()):
+            people_poker_loop()
+
+        # Clean up any open files.
+        error_log.close()
+        output_log.close()
 
 if __name__ == "__main__":
-    people_poker_daemon()
+    pp = PeoplePoker()
+
+    pp.update_user_status(sleep=False)
+    #pp.run_as_daemon()
