@@ -1,11 +1,10 @@
-import ldapconnect
 import arpquery
-import MySQLdb
 import daemon
+import datetime
+import ldapconnect
+import MySQLdb
 import sys
 import time
-import ConfigParser
-import datetime
 
 def update_user_status():
     """ Update database with current user status.
@@ -15,30 +14,28 @@ def update_user_status():
     """
 
     # Read config file each time function is called
-    config = ConfigParser.ConfigParser()
-    config.read("config.ini")
 
     # Get all users
     names = ldapconnect.get_user_ldap_info(
-        config.get('ldap','username'),
-        config.get('ldap','password'),
-        config.get('ldap','serverURI'),
-        config.get('ldap','ldaproot'),
-        config.get('ldap','ou_to_search'))
+        self.settings[('ldap','username')],
+        self.settings[('ldap','password')],
+        self.settings[('ldap','server_uri')],
+        self.settings[('ldap','ldaproot')],
+        self.settings[('ldap','ou_to_search')])
 
     # Get all devices currently active
     active_devices = arpquery.getArpCaches(
         #devices_to_query appears as comma separated list, so
         # get rid of the commas.
-        config.get('snmp', 'devices_to_query').split(','),
-        config.get('snmp', 'snmp_community'),
-        config.get('snmp', 'snmp_arp_variable'))
+        self.settings[('snmp', 'devices_to_query')].split(','),
+        self.settings[('snmp', 'snmp_community')],
+        self.settings[('snmp', 'snmp_arp_variable')])
 
     dbconn = MySQLdb.connect(
-        host = config.get("database", "host"),
-        user = config.get("database", "user"),
-        passwd = config.get("database", "password"),
-        db = config.get("database", "dbname"))
+        host=self.settings[("database", "host")],
+        user=self.settings[("database", "user")],
+        passwd=self.settings[("database", "password")],
+        db=self.settings[("database", "dbname")])
 
     cursor = dbconn.cursor()
 
@@ -51,7 +48,8 @@ def update_user_status():
         user_status = 'OUT'
 
         devs = cursor.fetchall()
-        # Iterate through all the user's devices, and see 
+
+        # Iterate through all the user's devices, and see
         # if any of them are active
         for dev in devs:
             if dev[0] in active_devices:
@@ -81,7 +79,7 @@ def update_user_status():
 
     #Sleep until time to poll again
     try:
-        time.sleep(float(config.get("poller" , "frequency_seconds")))
+        time.sleep(float(self.settings[("poller" , "frequency_seconds")]))
     except ValueError:
         #Poll every minute by default
         time.sleep(60)
@@ -107,9 +105,9 @@ def people_poker_daemon():
     error_log = open(os.path.join(logs, 'error.log'), 'w+')
     output_log = open(os.path.join(logs, 'output.log'), 'w+')
 
-    with daemon.DaemonContext(stdout = output_log,
-                              stderr = error_log,
-                              working_directory = os.getcwd()):
+    with daemon.DaemonContext(stdout=output_log,
+                              stderr=error_log,
+                              working_directory=os.getcwd()):
         people_poker_loop()
 
     # Clean up any open files.

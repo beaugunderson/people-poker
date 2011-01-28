@@ -1,21 +1,17 @@
 import MySQLdb
-import ConfigParser
 import json
 
 def query_user_status(userid):
     """ Returns JSON output for current status of user matching userid. """
 
     # Read config file
-    config = ConfigParser.ConfigParser()
-    config.read("config.ini")
+    db = MySQLdb.connect(
+        host=self.settings['host'],
+        user=self.settings['user'],
+        passwd=self.settings['password'],
+        db=self.settings['database'])
 
-    dbconn = MySQLdb.connect(
-        host = config.get("database" , "host"),
-        user = config.get("database" , "user"),
-        passwd = config.get("database" , "password"),
-        db = config.get("database" , "dbname"))
-
-    cursor = dbconn.cursor()
+    cursor = db.cursor()
 
     cursor.execute("""
             SELECT * FROM current_user_status

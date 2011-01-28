@@ -4,15 +4,12 @@ import re
 import sys
 import zmq
 
-from ConfigParser import SafeConfigParser
-
 # TODO Refactor into a plugin class
 # TODO Refactor to use a higher-level configuration library
 # TODO Refactor to use SqlAlchemy
-
-class DoorCode(StatusProvider):
+class DoorCodeProvider(Provider):
     def __init__(self, options=None):
-        pass
+        super(DoorCodeProvider, self).__init__()
 
     def start_server(self):
         """
@@ -26,19 +23,8 @@ class DoorCode(StatusProvider):
         port = 0
 
         try:
-            # Read config file
-            config = SafeConfigParser()
-            config.read("config.ini")
-
-            uri = config.get("door_code", "server_uri")
-        except ConfigParser.Error:
-            print "Could not read config file"
-
-            sys.exit(1)
-
-        try:
             socket = context.socket(zmq.REP)
-            socket.bind(uri)
+            socket.bind(self.settings['uri'])
         except zmq.ZMQError as e:
             print "Could not bind to socket using %s: %s" % (uri, e)
 
@@ -61,30 +47,27 @@ class DoorCode(StatusProvider):
 
     def process_data(self, msg):
         try:
-            config = ConfigParser.ConfigParser()
-            config.read("config.ini")
+            db = MySQLdb.connect(
+                host=self.settings['host'],
+                user=self.settings['user'],
+                passwd=self.settings['password'],
+                db=self.settings['database'])
 
-            dbconn = MySQLdb.connect(
-                host = config.get("DBInfo" , "host"),
-                user = config.get("DBInfo" , "user"),
-                passwd = config.get("DBInfo" , "password"),
-                db = config.get("DBInfo" , "dbname"))
-
-            cursor = dbconn.cursor()
+            cursor = db.cursor()
 
             now = datetime.datetime.now()
 
             # Assume user exists
-            cursor.execute("""UPDATE current_user_status 
-                              SET status = "IN", last_seen = %s 
-                              WHERE userid = %s 
+            cursor.execute("""UPDATE current_user_status
+                              SET status = "IN", last_seen = %s
+                              WHERE userid = %s
                            """ , (now, msg.userid))
 
             return { 'Status': 'Success' }
-        except (ConfigParser.Error, MySQLdb.Error) as e:
+        except MySQLdb.Error as e:
             return { 'Status': 'Failure', 'Exception': e }
 
 if __name__ == "__main__":
-    server = DoorCode()
+    server = DoorCodeProvider()
 
     server.start_server()

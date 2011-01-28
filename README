@@ -1,0 +1,2 @@
+pip install python-ldap
+pip install configobj

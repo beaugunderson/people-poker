@@ -1,27 +1,25 @@
-## Python wrapper to probe the ARP caches of our routers and access points
-
-## Dependencies:
-##  snmpwalk system command
 import os
 import re
 
-class Arp(StatusProvider):
+class ArpProvider(Provider):
+    provides = ['devices']
+
     def __init__(self, options=None):
-        pass
+        super(ArpProvider, self).__init__()
 
     def poll(self):
         mac_addresses = []
 
-        for device in devices_to_query:
+        for device in self.settings['devices_to_query']:
             mac_addresses += self._get_arp_cache(device)
 
     def _get_arp_cache(self, device):
         """
-        Query a device for active mac addresses.
+        Query a device for active MAC addresses.
         """
 
-        lines = os.popen("snmpwalk -c " + snmp_community + " " +
-               device + " " + snmp_arp_variable)
+        lines = os.popen("snmpwalk -c " + self.settings['snmp_community'] + " " +
+                device + " " + self.settings['snmp_arp_variable'])
 
         mac_addresses = []
 
