@@ -1,13 +1,18 @@
 import daemon
-import datetime
 import imp
 import os
 import pkgutil
 import sys
 import time
+import threading
 
 from collections import defaultdict
 
+from datetime import datetime as dt
+
+from pprint import pprint
+
+from models import Base
 from models.user import User
 from models.device import Device
 from models.status import Status
@@ -18,14 +23,46 @@ from sqlalchemy.orm import backref, relationship, sessionmaker
 from provider import Provider
 
 class PeoplePoker(object):
+    threads = []
+
     def __init__(self):
+        # Get all of the provider classes and instantiate them
         self.providers = self.get_providers()
+        self.provider_instances = self.get_provider_instances()
+
+        # Initialize the database connection
+        engine = create_engine('sqlite:///:memory:', echo=False)
+
+        Base.metadata.create_all(engine)
+
+        Session = sessionmaker()
+        Session.configure(bind=engine)
+
+        self.session = Session()
+
+        # Start any server providers (like the ZMQ server provider)
+        for provider in self.provider_instances['server']:
+            print "Starting server for %s" % provider.name
+
+            self.threads.append(provider)
+
+        for thread in self.threads:
+            thread.start()
+
+    def get_provider_instances(self):
+        provider_instances = defaultdict(list)
+
+        for type in self.providers.keys():
+            for provider in self.providers[type]:
+                provider_instances[type].append(provider())
+
+        return provider_instances
 
     def get_providers(self):
-        plugin_path = [os.path.join(sys.path[0], 'providers')]
+        provider_path = [os.path.join(sys.path[0], 'providers')]
 
-        for loader, name, ispkg in pkgutil.iter_modules(plugin_path):
-            file, pathname, desc = imp.find_module(name, plugin_path)
+        for loader, name, ispkg in pkgutil.iter_modules(provider_path):
+            file, pathname, desc = imp.find_module(name, provider_path)
 
             imp.load_module(name, file, pathname, desc)
 
@@ -41,7 +78,22 @@ class PeoplePoker(object):
 
         return providers
 
-    def update_user_status(self, sleep=True):
+    def add_or_update_user_status(self, user, provider, status, time):
+        try:
+            status = self.session.query(Status).filter(_and(Status.user==user, Status.provider==provider)).one()
+
+            status.provider = provider
+            status.status = status
+            status.update_time = time
+
+            self.session.commit()
+        except:
+            status = Status(provider, status, time)
+
+            self.session.add(status)
+            self.session.commit()
+
+    def update_user_status(self):
         """
         Update database with current user status.
         Query ARP cache for access points,
@@ -49,76 +101,57 @@ class PeoplePoker(object):
         Update MYSQL database with the new status, inserting new users if necessary
         """
 
-        from pprint import pprint
-        pprint(self.providers)
+        # Update data from all providers
+        for type in ['status', 'devices', 'users']:
+            for provider in self.provider_instances[type]:
+                print "Polling provider: %s" % provider
 
-        user_providers = []
-        for provider in self.providers['users']:
-            user_providers.append(provider())
+                # Call the polling function of the provider to
+                # refresh the data
+                try:
+                    provider.poll()
+                except Exception as e:
+                    print "There was an error polling provider %s: %s" % (provider, e)
 
-        # TODO change device to status, must map to a user?
-        device_providers = []
-        for provider in self.providers['devices']:
-            device_providers.append(provider())
+        # Update data from status providers
+        for provider in self.provider_instances['status']:
+            for update in provider.updates:
+                print "Got update: %s" % update
 
-        # Initialize the database
-        engine = create_engine('sqlite:///:memory:', echo=False)
+        # Update data from device providers
+        devices = defaultdict(list)
 
-        from models import Base
-        Base.metadata.create_all(engine)
-
-        Session = sessionmaker()
-        Session.configure(bind=engine)
-
-        session = Session()
-
-        for provider in device_providers:
-            print "Using provider: %s" % provider
-
+        for provider in self.provider_instances['devices']:
             for device in provider.devices:
-                print "Found device: %s" % device
+                #print "Active device: %s" % device
 
-        for user in session.query(User):
+                devices[device].append(provider.name)
+
+        # Iterate through each user
+        for user in self.session.query(User):
             print "Found user: %s" % user
-
-            user_status = 'OUT'
 
             # Iterate through all the user's devices, and see
             # if any of them are active
             for device in user.devices:
-                print "User had device: %s" % device
+                print "User has device: %s" % device
 
-                for provider in device_providers:
-                    if device.mac_address in provider.devices:
-                        user_status = 'IN'
-
-                        break
-
-            try:
-                status = session.query(Status).filter(_and(Status.user==user, Status.provider==provider)).one()
-
-                status.provider = provider
-                status.status = user_status
-                status.update_time = now
-
-                session.commit()
-            except:
-                now = datetime.datetime.now()
-
-                status = Status(provider, user_status, now)
-
-                session.add(status)
-                session.commit()
-
-        if sleep:
-            time.sleep(60)
+                if device.mac_address in devices:
+                    for provider in devices[device.mac_address]:
+                        self.add_or_update_user_status(provider, 'in', dt.now())
+                else:
+                    for provider in devices[device.mac_address]:
+                        self.add_or_update_user_status(provider, 'out', dt.now())
 
     def people_poker_loop(self):
         """ Main loop for the people poker. """
+
         while True:
-            print "Querying status"
+            print "Querying status..."
 
             self.update_user_status()
+
+            time.sleep(10)
 
     def run_as_daemon(self):
         """Run people poker as daemon process"""
@@ -135,12 +168,14 @@ class PeoplePoker(object):
         error_log = open(os.path.join(logs, 'error.log'), 'w+')
         output_log = open(os.path.join(logs, 'output.log'), 'w+')
 
-        providers = get_providers()
-
         with daemon.DaemonContext(stdout=output_log,
                                   stderr=error_log,
                                   working_directory=os.getcwd()):
-            people_poker_loop()
+            self.people_poker_loop()
+
+        # Stop any running threads
+        for thread in self.threads():
+            thread.stop()
 
         # Clean up any open files.
         error_log.close()
@@ -149,5 +184,14 @@ class PeoplePoker(object):
 if __name__ == "__main__":
     pp = PeoplePoker()
 
-    pp.update_user_status(sleep=False)
+    try:
+        pp.people_poker_loop()
+    except (KeyboardInterrupt, SystemExit):
+        for thread in pp.threads:
+            print "Attempting to stop thread %s" % thread
+
+            thread.stop()
+
+    sys.exit()
+
     #pp.run_as_daemon()

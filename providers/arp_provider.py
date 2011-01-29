@@ -9,6 +9,7 @@ class ArpProvider(Provider):
     def __init__(self, options=None):
         super(ArpProvider, self).__init__()
 
+    def poll(self):
         mac_addresses = []
 
         for device in self.settings['devices']:

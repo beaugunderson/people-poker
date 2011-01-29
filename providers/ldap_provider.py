@@ -11,10 +11,8 @@ class LDAPProvider(Provider):
     def __init__(self, options=None):
         super(LDAPProvider, self).__init__()
 
+    def poll(self):
         self.get_user_ldap_info()
-
-    def __iter__(self):
-        return self.users
 
     def open_connection(self):
         """ Open connection to the LDAP server """
@@ -49,7 +47,6 @@ class LDAPProvider(Provider):
         """ Extract user information from our ldap server """
         l = self.open_connection()
 
-        # Example search to find a specific username:
         r = l.search_s(self.settings['ou_to_search'],
                        ldap.SCOPE_SUBTREE,
                        "(sAMAccountName=*)",

@@ -2,3 +2,15 @@ pip install SqlAlchemy
 pip install python-ldap
 pip install configobj
 pip install python-daemon
+pip install nose
+pip install pyasn
+pip install snmp
+pip install zmq (or zmq_static?)
+
+pip install plac?
+
+apt-get install mysql-client
+apt-get install openldap
+apt-get install libsnmp
+apt-get install libzmq
+apt-get install libzmq-dev
