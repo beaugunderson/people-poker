@@ -1,3 +1,5 @@
+#!/usr/bin/env python2.7
+
 import daemon
 import imp
 import os
@@ -78,9 +80,11 @@ class PeoplePoker(object):
 
         return providers
 
-    def add_or_update_user_status(self, user, provider, status, time):
+    def update_status(self, user, provider, status, time):
         try:
-            status = self.session.query(Status).filter(_and(Status.user==user, Status.provider==provider)).one()
+            status = self.session.query(Status).filter(_and(
+                Status.user == user,
+                Status.provider == provider)).one()
 
             status.provider = provider
             status.status = status
@@ -93,13 +97,8 @@ class PeoplePoker(object):
             self.session.add(status)
             self.session.commit()
 
-    def update_user_status(self):
-        """
-        Update database with current user status.
-        Query ARP cache for access points,
-        Get list of users from LDAP server
-        Update MYSQL database with the new status, inserting new users if necessary
-        """
+    def query_providers(self):
+        """Query the various providers."""
 
         # Update data from all providers
         for type in ['status', 'devices', 'users']:
@@ -111,7 +110,7 @@ class PeoplePoker(object):
                 try:
                     provider.poll()
                 except Exception as e:
-                    print "There was an error polling provider %s: %s" % (provider, e)
+                    print "There was an error polling %s: %s" % (provider, e)
 
         # Update data from status providers
         for provider in self.provider_instances['status']:
@@ -138,23 +137,21 @@ class PeoplePoker(object):
 
                 if device.mac_address in devices:
                     for provider in devices[device.mac_address]:
-                        self.add_or_update_user_status(provider, 'in', dt.now())
+                        self.update_status(provider, 'in', dt.now())
                 else:
                     for provider in devices[device.mac_address]:
-                        self.add_or_update_user_status(provider, 'out', dt.now())
+                        self.update_status(provider, 'out', dt.now())
 
-    def people_poker_loop(self):
-        """ Main loop for the people poker. """
+    def loop(self):
+        """The main program loop."""
 
         while True:
-            print "Querying status..."
-
-            self.update_user_status()
+            self.query_providers()
 
             time.sleep(10)
 
     def run_as_daemon(self):
-        """Run people poker as daemon process"""
+        """Run people poker as a daemon process."""
 
         print "Starting People Poker daemon"
 
@@ -171,7 +168,7 @@ class PeoplePoker(object):
         with daemon.DaemonContext(stdout=output_log,
                                   stderr=error_log,
                                   working_directory=os.getcwd()):
-            self.people_poker_loop()
+            self.loop()
 
         # Stop any running threads
         for thread in self.threads():
@@ -185,8 +182,8 @@ if __name__ == "__main__":
     pp = PeoplePoker()
 
     try:
-        pp.people_poker_loop()
-    except (KeyboardInterrupt, SystemExit):
+        pp.loop()
+    except (KeyboardInterrupt, SystemExit, Exception):
         for thread in pp.threads:
             print "Attempting to stop thread %s" % thread
 

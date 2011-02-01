@@ -1,5 +1,5 @@
-import MySQLdb
-import json
+import sqlalchemy
+import simplejson
 
 def query_user_status(userid):
     """ Returns JSON output for current status of user matching userid. """

@@ -6,26 +6,24 @@ from provider import Provider
 class ArpProvider(Provider):
     provides = ['devices']
 
-    def __init__(self, options=None):
+    def __init__(self):
         super(ArpProvider, self).__init__()
 
     def poll(self):
         mac_addresses = []
 
-        for device in self.settings['devices']:
+        for device in self.settings.keys():
             print "Querying device: %s" % device
 
-            mac_addresses += self._get_arp_cache(device)
+            mac_addresses += self._get_arp_cache(device, self.settings[device])
 
         self.devices = list(set(mac_addresses))
         self.devices.sort()
 
-    def _get_arp_cache(self, device):
-        """
-        Query a device for active MAC addresses.
-        """
+    def _get_arp_cache(self, device, settings):
+        """Query a device for active MAC addresses."""
 
-        command = "snmpwalk -v1 -c " + self.settings['community'] + " " + device + " " + self.settings['arp_variable']
+        command = "snmpwalk -v1 -c " + settings['community'] + " " + device + " " + settings['arp_variable']
 
         lines = os.popen(command)
 

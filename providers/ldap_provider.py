@@ -8,14 +8,14 @@ class LDAPProvider(Provider):
     provides = ['users']
     users = []
 
-    def __init__(self, options=None):
+    def __init__(self):
         super(LDAPProvider, self).__init__()
 
     def poll(self):
         self.get_user_ldap_info()
 
     def open_connection(self):
-        """ Open connection to the LDAP server """
+        """Open connection to the LDAP server"""
         try:
             l = ldap.initialize(self.settings['server_uri'])
 
@@ -37,14 +37,14 @@ class LDAPProvider(Provider):
         return l
 
     def close_connection(self, l):
-        """ Close connection to the LDAP server """
+        """Close connection to the LDAP server"""
         try:
             l.unbind()
         except ldap.LDAPError, e:
             print "An LDAP exception was encountered while closing connection: %s" % e
 
     def get_user_ldap_info(self):
-        """ Extract user information from our ldap server """
+        """Extract user information from our ldap server"""
         l = self.open_connection()
 
         r = l.search_s(self.settings['ou_to_search'],
