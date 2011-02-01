@@ -3,6 +3,7 @@ import re
 
 from provider import Provider
 
+
 class ArpProvider(Provider):
     provides = ['devices']
 
@@ -23,7 +24,8 @@ class ArpProvider(Provider):
     def _get_arp_cache(self, device, settings):
         """Query a device for active MAC addresses."""
 
-        command = "snmpwalk -v1 -c " + settings['community'] + " " + device + " " + settings['arp_variable']
+        command = "snmpwalk -v1 -c %s %s %s" % (settings['community'], device,
+            settings['arp_variable'])
 
         lines = os.popen(command)
 
@@ -44,8 +46,10 @@ class ArpProvider(Provider):
         lowercase and two digits per group for easy string comparison.
         """
 
-        if re.match(r"(([0-9a-f]{1,2}[: ]){5})([0-9a-f]{1,2})$", mac_address.lower()):
-            return ":".join([i.zfill(2) for i in re.split(r"[: ]", mac_address)]).lower()
+        if re.match(r"(([0-9a-f]{1,2}[: ]){5})([0-9a-f]{1,2})$",
+            mac_address.lower()):
+            return ":".join([i.zfill(2) for i in re.split(r"[: ]",
+                mac_address)]).lower()
         else:
             print mac_address + " is not a valid MAC address"
 

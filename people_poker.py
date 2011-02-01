@@ -24,6 +24,7 @@ from sqlalchemy.orm import backref, relationship, sessionmaker
 
 from provider import Provider
 
+
 class PeoplePoker(object):
     threads = []
 

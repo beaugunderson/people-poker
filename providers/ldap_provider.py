@@ -4,6 +4,7 @@ import sys
 
 from provider import Provider
 
+
 class LDAPProvider(Provider):
     provides = ['users']
     users = []
@@ -23,16 +24,19 @@ class LDAPProvider(Provider):
             l.set_option(ldap.OPT_REFERRALS, 0)
 
             # Use hardcoded certificate file
-            ldap.set_option(ldap.OPT_X_TLS_CACERTFILE, 'certificates/root-ca.crt')
+            ldap.set_option(ldap.OPT_X_TLS_CACERTFILE,
+                    'certificates/root-ca.crt')
 
             # For debugging information uncomment below
             l.set_option(ldap.OPT_DEBUG_LEVEL, 255)
 
             l.protocol_version = ldap.VERSION3
 
-            l.simple_bind_s("%s\\%s" % (self.settings['ldap_root'], self.settings['username']), self.settings['password'])
-        except ldap.LDAPError, e:
-            print "An LDAP exception was encountered opening the connection: %s" % e
+            l.simple_bind_s("%s\\%s" % (self.settings['ldap_root'],
+                self.settings['username']),
+                self.settings['password'])
+        except ldap.LDAPError as e:
+            print "An LDAP exception ocurred while opening the connection: ", e
 
         return l
 
@@ -40,8 +44,8 @@ class LDAPProvider(Provider):
         """Close connection to the LDAP server"""
         try:
             l.unbind()
-        except ldap.LDAPError, e:
-            print "An LDAP exception was encountered while closing connection: %s" % e
+        except ldap.LDAPError as e:
+            print "An LDAP exception ocurred while closing connection: ", e
 
     def get_user_ldap_info(self):
         """Extract user information from our ldap server"""
@@ -55,7 +59,8 @@ class LDAPProvider(Provider):
         usernames = []
 
         for entry, attribute in r:
-            usernames.append((attribute['sAMAccountName'][0], attribute['cn'][0]))
+            usernames.append((attribute['sAMAccountName'][0],
+                attribute['cn'][0]))
 
         self.users = usernames
 

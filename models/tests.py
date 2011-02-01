@@ -4,6 +4,7 @@ from user import User
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+
 class TestDevice():
     def setup(self):
         """Setup the in-memory sqlite engine."""

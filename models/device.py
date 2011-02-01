@@ -4,9 +4,10 @@ from sqlalchemy.orm import backref, relationship
 from models.user import User
 from models import Base
 
+
 class Device(Base):
     __tablename__ = 'devices'
-    __table_args__ = { 'useexisting': True }
+    __table_args__ = {'useexisting': True}
 
     id = Column(Integer, primary_key=True)
     name = Column(String)

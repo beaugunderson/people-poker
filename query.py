@@ -1,6 +1,7 @@
 import sqlalchemy
 import simplejson
 
+
 def query_user_status(userid):
     """ Returns JSON output for current status of user matching userid. """
 
@@ -16,19 +17,19 @@ def query_user_status(userid):
     cursor.execute("""
             SELECT * FROM current_user_status
             WHERE userid REGEXP %s
-            """,  userid )
+            """,  userid)
 
     statuslist = cursor.fetchall()
     return json_encode(statuslist)
 
+
 def json_encode(statuslist):
     l = []
 
-    for user,status,last_seen in statuslist:
-        l.append({ "user": user,
-                   "status": status,
-                   "last_seen": last_seen.isoformat() })
-    print l
+    for user, status, last_seen in statuslist:
+        l.append({"user": user,
+                  "status": status,
+                  "last_seen": last_seen.isoformat()})
 
     return json.dumps(l)
 

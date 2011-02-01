@@ -1,12 +1,13 @@
-from sqlalchemy import Table, Column, DateTime, Integer, String, MetaData, ForeignKey
+from sqlalchemy import Column, DateTime, Integer, String, MetaData, ForeignKey
 from sqlalchemy.orm import backref, relationship
 
 from models.user import User
 from models import Base
 
+
 class Status(Base):
     __tablename__ = 'statuses'
-    __table_args__ = { 'useexisting': True }
+    __table_args__ = {'useexisting': True}
 
     id = Column(Integer, primary_key=True)
     provider = Column(String)
@@ -22,4 +23,5 @@ class Status(Base):
         self.update_time = update_time
 
     def __repr__(self):
-        return "<Status('%s', '%s', '%s')>" % (self.provider, self.status, self.update_time)
+        return "<Status('%s', '%s', '%s')>" % (self.provider, self.status,
+                self.update_time)

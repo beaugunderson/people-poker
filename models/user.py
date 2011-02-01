@@ -2,9 +2,10 @@ from sqlalchemy import Table, Column, Integer, String, MetaData, ForeignKey
 
 from models import Base
 
+
 class User(Base):
     __tablename__ = 'users'
-    __table_args__ = { 'useexisting': True }
+    __table_args__ = {'useexisting': True}
 
     id = Column(Integer, primary_key=True)
     username = Column(String)

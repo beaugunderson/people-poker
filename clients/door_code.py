@@ -12,13 +12,15 @@ import zmq
 from configobj import ConfigObj
 from datetime import datetime as dt
 
+
 class EventHandler(pyinotify.ProcessEvent):
-    def __init__(self, position=0):
+    def __init__(self, regex, position=0):
         super(pyinotify.ProcessEvent, self).__init__()
 
         context = zmq.Context()
 
-        self.config = ConfigObj("door-code.ini")
+        self.regex = regex
+        self.config = ConfigObj("door-code.ini")["door-code-client"]
         self.socket = context.socket(zmq.REQ)
         self.position = position
 
@@ -27,10 +29,10 @@ class EventHandler(pyinotify.ProcessEvent):
             f.seek(self.position)
 
             for line in f:
-                match = door_code.search(line)
+                match = regex.search(line)
 
                 if match:
-                    self.socket.connect(self.config["door-code-client"]["server_uri"])
+                    self.socket.connect(self.config["server_uri"])
                     self.socket.send_json({
                         'user_id': match.group('door_code'),
                         'provider': 'door-code',
@@ -40,13 +42,14 @@ class EventHandler(pyinotify.ProcessEvent):
                     response = self.socket.recv_json()
                     self.socket.close()
 
-                    print "Access granted to this user's code: %s" % match.group('door_code')
+                    print "Access granted to this user's code: %s" \
+                            % match.group('door_code')
 
             self.position = f.tell()
 
+
 @plac.annotations(
     path=("Path to the log file to watch for door codes", 'option', 'p'))
-
 def main(path):
     if not path:
         print "You must provide a path to watch."
@@ -58,7 +61,7 @@ def main(path):
 
     wm = pyinotify.WatchManager()
 
-    notifier = pyinotify.AsyncNotifier(wm, EventHandler(position))
+    notifier = pyinotify.AsyncNotifier(wm, EventHandler(position, regex))
 
     wm.add_watch(path, pyinotify.IN_MODIFY, rec=True)
 

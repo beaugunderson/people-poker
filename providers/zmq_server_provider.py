@@ -7,35 +7,35 @@ from zmq.eventloop import ioloop, zmqstream
 
 from provider import Provider
 
+
 class ZMQServerProvider(Provider, threading.Thread):
     provides = ['status', 'server']
     updates = []
 
     def __init__(self, args=(), kwargs={}):
         super(ZMQServerProvider, self).__init__(*args, **kwargs)
+
         self.loop = ioloop.IOLoop.instance()
 
     def stop(self):
         self.loop.stop()
-
-    def stopped(self):
-        return self._stop.isSet()
 
     def receive(self, message):
         message = json.loads(''.join(message))
 
         print "Received message: %s" % message
 
-        if message.has_key('userid'):
+        if 'user_id' in message:
             self.updates.append(message)
 
-            self.stream.send_json({ 'status': 'ok' })
+            self.stream.send_json({'status': 'ok'})
         else:
             print "Received bad data: %s" % message
 
     def run(self):
         """
-        A ZeroMQ based server that receives updates from clients like the door code provider.
+        A ZeroMQ based server that receives updates from clients like the door
+        code provider.
         """
 
         context = zmq.Context()
@@ -44,7 +44,8 @@ class ZMQServerProvider(Provider, threading.Thread):
             socket = context.socket(zmq.REP)
             socket.bind(self.settings['server_uri'])
         except zmq.ZMQError as e:
-            print "Could not bind to socket using %s: %s" % (self.settings['server_uri'], e)
+            print "Could not bind to socket " \
+                "using %s: %s" % (self.settings['server_uri'], e)
 
             sys.exit(1)
 
@@ -58,5 +59,7 @@ class ZMQServerProvider(Provider, threading.Thread):
 if __name__ == "__main__":
     server = ZMQServerProvider()
 
-    thread = server.Server()
-    thread.start()
+    try:
+        server.start()
+    finally:
+        server.stop()
