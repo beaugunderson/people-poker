@@ -82,6 +82,9 @@ class PeoplePoker(object):
         return providers
 
     def update_status(self, user, provider, status, time):
+        if not isinstance(time, dt):
+            time = dt.strptime(time, '%Y-%m-%dT%H:%M:%S.%f')
+
         try:
             status = self.session.query(Status).filter(_and(
                 Status.user == user,
@@ -123,15 +126,13 @@ class PeoplePoker(object):
 
         for provider in self.provider_instances['devices']:
             for device in provider.devices:
-                #print "Active device: %s" % device
-
                 devices[device].append(provider.name)
 
         # Iterate through each user
         for user in self.session.query(User):
             print "Found user: %s" % user
 
-            # Iterate through all the user's devices, and see
+            # Iterate through all the user's devices and see
             # if any of them are active
             for device in user.devices:
                 print "User has device: %s" % device
@@ -184,7 +185,7 @@ if __name__ == "__main__":
 
     try:
         pp.loop()
-    except (KeyboardInterrupt, SystemExit, Exception):
+    finally:
         for thread in pp.threads:
             print "Attempting to stop thread %s" % thread
 
