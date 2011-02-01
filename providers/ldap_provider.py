@@ -2,7 +2,7 @@ import ldap
 import os
 import sys
 
-from provider import Provider
+from spp.provider import Provider
 
 
 class LDAPProvider(Provider):
@@ -42,6 +42,7 @@ class LDAPProvider(Provider):
 
     def close_connection(self, l):
         """Close connection to the LDAP server"""
+
         try:
             l.unbind()
         except ldap.LDAPError as e:

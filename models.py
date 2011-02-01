@@ -57,7 +57,7 @@ class Status(Base):
     user = relationship(User, backref=backref('statuses'), order_by=id)
     user_id = Column(Integer, ForeignKey('users.id'))
 
-    def __init__(self, name, update_time, status):
+    def __init__(self, provider, status, update_time):
         self.provider = provider
         self.status = status
         self.update_time = update_time

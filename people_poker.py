@@ -9,18 +9,12 @@ import time
 import threading
 
 from collections import defaultdict
-
 from datetime import datetime as dt
-
-from pprint import pprint
-
-from models import Base
-from models.user import User
-from models.device import Device
-from models.status import Status
 
 from sqlalchemy import create_engine, ForeignKey, and_
 from sqlalchemy.orm import backref, relationship, sessionmaker
+
+from models import Base, User, Device, Status
 
 from provider import Provider
 
@@ -29,6 +23,8 @@ class PeoplePoker(object):
     threads = []
 
     def __init__(self):
+        super(PeoplePoker, self).__init__()
+
         # Get all of the provider classes and instantiate them
         self.providers = self.get_providers()
         self.provider_instances = self.get_provider_instances()
@@ -53,6 +49,8 @@ class PeoplePoker(object):
             thread.start()
 
     def get_provider_instances(self):
+        """Instantiate collected providers."""
+
         provider_instances = defaultdict(list)
 
         for type in self.providers.keys():
@@ -62,6 +60,8 @@ class PeoplePoker(object):
         return provider_instances
 
     def get_providers(self):
+        """Collect all providers and classify them by what they provide."""
+
         provider_path = [os.path.join(sys.path[0], 'providers')]
 
         for loader, name, ispkg in pkgutil.iter_modules(provider_path):
@@ -181,6 +181,9 @@ class PeoplePoker(object):
         output_log.close()
 
 if __name__ == "__main__":
+    # XXX Is this a hack?
+    sys.path.append(os.path.abspath('..'))
+
     pp = PeoplePoker()
 
     try:
@@ -192,5 +195,3 @@ if __name__ == "__main__":
             thread.stop()
 
     sys.exit()
-
-    #pp.run_as_daemon()

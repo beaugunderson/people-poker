@@ -14,7 +14,7 @@ class ArpProvider(Provider):
         mac_addresses = []
 
         for device in self.settings.keys():
-            print "Querying device: %s" % device
+            #print "Querying device: %s" % device
 
             mac_addresses += self._get_arp_cache(device, self.settings[device])
 
