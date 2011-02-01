@@ -1,16 +1,17 @@
-pip install SqlAlchemy
-pip install python-ldap
-pip install configobj
-pip install python-daemon
-pip install nose
-pip install pyasn
-pip install snmp
-pip install zmq (or zmq_static?)
+easy_install-2.7 configobj
+easy_install-2.7 nose
+easy_install-2.7 plac
+easy_install-2.7 pyasn
+easy_install-2.7 python-daemon
+easy_install-2.7 python-ldap
+easy_install-2.7 snmp
+easy_install-2.7 SqlAlchemy
 
-pip install plac?
-
+apt-get install libsnmp
 apt-get install mysql-client
 apt-get install openldap
-apt-get install libsnmp
-apt-get install libzmq
-apt-get install libzmq-dev
+
+# Need bleeding-edge for these
+#easy_install-2.7 pyzmq
+#apt-get install libzmq
+#apt-get install libzmq-dev
