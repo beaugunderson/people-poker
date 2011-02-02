@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 
@@ -15,26 +16,26 @@ def transform_module_name(string):
 
 
 class Provider(object):
-    settings = {}
-
     def __init__(self, args=(), kwargs={}):
         super(Provider, self).__init__(*args, **kwargs)
 
-        self.settings = {}
+        self.logger = logging.getLogger()
 
         self.load_settings()
 
-    @property
-    def name(self):
+    def __str__(self):
         return transform_module_name(self.__class__.__name__)
 
+    def poll(self):
+        pass
+
     def load_settings(self):
-        print "Looking for %s in %s and %s.ini" % (self.name,
-                'config.ini', self.name)
+        self.logger.info("Looking for %s in %s, %s.ini" % (self,
+                'config.ini', self))
 
         base = ConfigObj()
 
-        for c in ["config.ini", "%s.ini" % self.name]:
+        for c in ["config.ini", "%s.ini" % self]:
             if not os.path.exists(c):
                 continue
 
@@ -44,17 +45,18 @@ class Provider(object):
             results = parser.validate(validator)
 
             if results:
-                if self.name in parser:
-                    base.merge(parser[self.name])
+                if str(self) in parser:
+                    base.merge(parser[str(self)])
 
                 continue
 
             # Print an error message for sections with errors
             for section_list, key, _ in flatten_errors(parser, results):
                 if key is not None:
-                    print 'Failed to validate: "%s" section "%s"' % (key,
-                            ', '.join(section_list))
+                    self.logger.error('Failed to validate: "%s" section "%s"' \
+                            % (key, ', '.join(section_list)))
                 else:
-                    print 'Section(s) missing: %s' % (', '.join(section_list))
+                    self.logger.error('Section(s) missing: %s' \
+                            % (', '.join(section_list)))
 
         self.settings = base

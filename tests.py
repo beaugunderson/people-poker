@@ -19,7 +19,7 @@ class TestLDAPProvider():
         l = LDAPProvider()
         l.poll()
 
-        names = [a for a, b in l.users]
+        names = [u.user_id for u in l.users]
 
         print "Users: %s" % ', '.join(names)
 

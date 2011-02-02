@@ -5,7 +5,7 @@ import zmq
 
 from zmq.eventloop import ioloop, zmqstream
 
-from provider import Provider
+from spp.provider import Provider
 
 
 class ZMQServerProvider(Provider, threading.Thread):

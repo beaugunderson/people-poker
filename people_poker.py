@@ -2,22 +2,29 @@
 
 import daemon
 import imp
+import itertools
+import logging
 import os
 import pkgutil
 import sys
 import time
 import threading
 
+# XXX For debugging
+from IPython.Shell import IPShellEmbed; ipshell = IPShellEmbed()
+
 from collections import defaultdict
 from datetime import datetime as dt
+from pprint import pformat
 
 from sqlalchemy import create_engine, ForeignKey, and_
 from sqlalchemy.orm import backref, relationship, sessionmaker
 
-from models import Base, User, Device, Status
+# XXX Is this a hack? If not, where's a better place for it?
+sys.path.append(os.path.abspath('..'))
 
-from provider import Provider
-
+from spp.models import Base, User, Device, Status
+from spp.provider import Provider
 
 class PeoplePoker(object):
     threads = []
@@ -25,9 +32,32 @@ class PeoplePoker(object):
     def __init__(self):
         super(PeoplePoker, self).__init__()
 
+        # TODO Push logging setup into a config file
+        self.logger = logging.getLogger()
+        self.logger.setLevel(logging.DEBUG)
+
+        formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+
+        console_handler = logging.StreamHandler()
+
+        console_handler.setLevel(logging.DEBUG)
+        console_handler.setFormatter(formatter)
+
+        self.logger.addHandler(console_handler)
+
+        self.logger.info("Starting up at %s..." % dt.now())
+
         # Get all of the provider classes and instantiate them
         self.providers = self.get_providers()
         self.provider_instances = self.get_provider_instances()
+
+        self.logger.info("Providers: " + pformat([(type, \
+                [provider.__name__ for provider in providers]) \
+                for type, providers in self.providers.iteritems()]))
+
+        self.logger.info("Instances: " + pformat([(type, \
+                [provider.__class__.__name__ for provider in providers]) \
+                for type, providers in self.provider_instances.iteritems()]))
 
         # Initialize the database connection
         engine = create_engine('sqlite:///:memory:', echo=False)
@@ -41,7 +71,7 @@ class PeoplePoker(object):
 
         # Start any server providers (like the ZMQ server provider)
         for provider in self.provider_instances['server']:
-            print "Starting server for %s" % provider.name
+            self.logger.info("Starting server for %s" % provider)
 
             self.threads.append(provider)
 
@@ -49,13 +79,23 @@ class PeoplePoker(object):
             thread.start()
 
     def get_provider_instances(self):
-        """Instantiate collected providers."""
+        """
+        Instantiate collected providers, taking care to only instantiate each
+        provider class once.
+        """
+
+        # Get a list of provider classes without duplicates
+        providers = list(set(itertools.chain(*self.providers.values())))
 
         provider_instances = defaultdict(list)
 
-        for type in self.providers.keys():
-            for provider in self.providers[type]:
-                provider_instances[type].append(provider())
+        for provider in providers:
+            instance = provider()
+
+            for type, classes in self.providers.iteritems():
+                for provider_class in classes:
+                    if isinstance(instance, provider_class):
+                        provider_instances[type].append(instance)
 
         return provider_instances
 
@@ -74,7 +114,8 @@ class PeoplePoker(object):
         providers = defaultdict(list)
 
         for subclass in subclasses:
-            print "Subclass %s provides %s" % (subclass, subclass.provides)
+            self.logger.info("Found provider %s providing %s" \
+                    % (subclass.__name__, ', '.join(subclass.provides)))
 
             for type in subclass.provides:
                 providers[type].append(subclass)
@@ -104,45 +145,67 @@ class PeoplePoker(object):
     def query_providers(self):
         """Query the various providers."""
 
-        # Update data from all providers
+        # Poll data for all providers
         for type in ['status', 'devices', 'users']:
             for provider in self.provider_instances[type]:
-                print "Polling provider: %s" % provider
+                self.logger.info("Polling provider %s" % provider)
 
                 # Call the polling function of the provider to
                 # refresh the data
                 try:
                     provider.poll()
                 except Exception as e:
-                    print "There was an error polling %s: %s" % (provider, e)
+                    self.logger.error("There was an error polling %s" \
+                            % provider)
+
+                    self.logger.exception(e)
+
+        # Update data from user providers
+        for provider in self.provider_instances['users']:
+            self.logger.debug("Got users: %s" % pformat(provider.users))
+
+            for user in provider.users:
+                try:
+                    db_user = self.session.query(User).filter(
+                            User.user_guid == user.user_guid).one()
+
+                    db_user.user_id = user.user_id
+                    db_user.user_name = user.user_name
+
+                    self.session.commit()
+                except:
+                    self.session.add(user)
+                    self.session.commit()
 
         # Update data from status providers
         for provider in self.provider_instances['status']:
             for update in provider.updates:
-                print "Got update: %s" % update
+                self.logger.info("Got update: %s" % update)
 
         # Update data from device providers
         devices = defaultdict(list)
 
         for provider in self.provider_instances['devices']:
             for device in provider.devices:
-                devices[device].append(provider.name)
+                devices[device].append(str(provider))
+
+        users = self.session.query(User)
+
+        self.logger.debug("Found users: %s" % pformat(users))
 
         # Iterate through each user
-        for user in self.session.query(User):
-            print "Found user: %s" % user
-
+        for user in users:
             # Iterate through all the user's devices and see
             # if any of them are active
             for device in user.devices:
-                print "User has device: %s" % device
+                self.logger.debug("User has device: %s" % device)
 
                 if device.mac_address in devices:
                     for provider in devices[device.mac_address]:
-                        self.update_status(provider, 'in', dt.now())
+                        self.update_status(user, provider, 'in', dt.now())
                 else:
                     for provider in devices[device.mac_address]:
-                        self.update_status(provider, 'out', dt.now())
+                        self.update_status(user, provider, 'out', dt.now())
 
     def loop(self):
         """The main program loop."""
@@ -154,8 +217,6 @@ class PeoplePoker(object):
 
     def run_as_daemon(self):
         """Run people poker as a daemon process."""
-
-        print "Starting People Poker daemon"
 
         logs = os.path.join(os.getcwd(), "logs")
 
@@ -181,9 +242,6 @@ class PeoplePoker(object):
         output_log.close()
 
 if __name__ == "__main__":
-    # XXX Is this a hack?
-    sys.path.append(os.path.abspath('..'))
-
     pp = PeoplePoker()
 
     try:

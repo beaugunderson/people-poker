@@ -93,10 +93,10 @@ def user_id_from_door_code(settings, door_code):
     if not len(r) == 1:
         return None
 
-    for entry, attribute in r:
-        guid = ''.join(['%02X' % ord(c) for c in attribute['objectGUID'][0]])
+    for dn, user in r:
+        guid = ''.join(['%02X' % ord(c) for c in user['objectGUID'][0]])
 
-        return (attribute['sAMAccountName'][0], attribute['cn'][0], guid)
+        return (user['sAMAccountName'][0], user['cn'][0], guid)
 
 
 @plac.annotations(

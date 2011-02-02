@@ -2,6 +2,7 @@ import ldap
 import os
 import sys
 
+from spp.models import User
 from spp.provider import Provider
 
 
@@ -55,14 +56,15 @@ class LDAPProvider(Provider):
         r = l.search_s(self.settings['ou_to_search'],
                        ldap.SCOPE_SUBTREE,
                        "(sAMAccountName=*)",
-                       ['cn', 'sAMAccountName'])
+                       ['sAMAccountName', 'cn', 'objectGUID'])
 
-        usernames = []
+        users = []
 
-        for entry, attribute in r:
-            usernames.append((attribute['sAMAccountName'][0],
-                attribute['cn'][0]))
+        for dn, user in r:
+            guid = ''.join(['%02X' % ord(c) for c in user['objectGUID'][0]])
 
-        self.users = usernames
+            users.append(User(user['sAMAccountName'][0], user['cn'][0], guid))
+
+        self.users = users
 
         self.close_connection(l)

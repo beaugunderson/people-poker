@@ -1,7 +1,7 @@
 import os
 import re
 
-from provider import Provider
+from spp.provider import Provider
 
 
 class ArpProvider(Provider):
