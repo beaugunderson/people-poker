@@ -18,15 +18,16 @@ from collections import defaultdict
 from configobj import ConfigObj
 from datetime import datetime as dt
 from pprint import pformat
-
-from sqlalchemy import create_engine, ForeignKey, and_
-from sqlalchemy.orm import backref, relationship, sessionmaker
+from sqlalchemy import and_
 
 # XXX Is this a hack? If not, where's a better place for it?
 sys.path.append(os.path.abspath('..'))
 
 from spp.models import Base, User, Device, Status
 from spp.provider import Provider
+
+from spp.utilities import create_db_session
+
 
 class PeoplePoker(object):
     threads = []
@@ -66,14 +67,7 @@ class PeoplePoker(object):
         db_settings = parser["database%s" % configuration]
 
         # Initialize the database connection
-        engine = create_engine(db_settings["server_uri"], echo=False)
-
-        Base.metadata.create_all(engine)
-
-        Session = sessionmaker()
-        Session.configure(bind=engine)
-
-        self.session = Session()
+        self.session = create_db_session(db_settings)
 
         # Start any server providers (like the ZMQ server provider)
         for provider in self.provider_instances['server']:

@@ -12,6 +12,8 @@ import zmq
 from configobj import ConfigObj
 from datetime import datetime as dt
 
+from spp.utilities import connect_and_search_ldap
+
 
 class EventHandler(pyinotify.ProcessEvent):
     def __init__(self, regex, door_settings, ldap_settings, position=0):
@@ -64,30 +66,8 @@ def user_id_from_door_code(settings, door_code):
             "Security Groups,OU=MyBusiness,DC=synapsedev,DC=com))" % door_code
 
     # TODO Generalize this here and in ldap_provider.py
-    l = ldap.initialize(settings['server_uri'])
-
-    l.set_option(ldap.OPT_X_TLS_DEMAND, True)
-    l.set_option(ldap.OPT_REFERRALS, 0)
-
-    # Use hardcoded certificate file
-    ldap.set_option(ldap.OPT_X_TLS_CACERTFILE,
-            os.path.abspath('../certificates/root-ca.crt'))
-
-    # For debugging information uncomment below
-    l.set_option(ldap.OPT_DEBUG_LEVEL, 255)
-
-    l.protocol_version = ldap.VERSION3
-
-    l.simple_bind_s("%s\\%s" % (settings['ldap_root'],
-        settings['username']),
-        settings['password'])
-
-    r = l.search_s(settings['ou_to_search'],
-                   ldap.SCOPE_SUBTREE,
-                   query,
+    r = connect_and_search_ldap(settings, settings['ou_to_search'], query,
                    ['cn', 'sAMAccountName', 'objectGUID'])
-
-    l.unbind()
 
     # There should be no more and no less than one result per door code
     if not len(r) == 1:
