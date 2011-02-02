@@ -63,7 +63,7 @@ class LDAPProvider(Provider):
         for dn, user in r:
             guid = ''.join(['%02X' % ord(c) for c in user['objectGUID'][0]])
 
-            users.append(User(user['sAMAccountName'][0], user['cn'][0], guid))
+            users.append(User(user['sAMAccountName'][0], guid, user['cn'][0]))
 
         self.users = users
 

@@ -12,9 +12,9 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
 
-    user_id = Column(String)
-    user_guid = Column(String)
-    user_name = Column(String)
+    user_id = Column(String(length=128))
+    user_guid = Column(String(length=128))
+    user_name = Column(String(length=128))
 
     def __init__(self, user_id, user_guid, user_name):
         self.user_id = user_id
@@ -31,8 +31,8 @@ class Device(Base):
     __table_args__ = {'useexisting': True}
 
     id = Column(Integer, primary_key=True)
-    name = Column(String)
-    mac_address = Column(String)
+    name = Column(String(length=64))
+    mac_address = Column(String(length=32))
 
     user = relationship(User, backref=backref('devices'), order_by=id)
     user_id = Column(Integer, ForeignKey('users.id'))
@@ -50,8 +50,8 @@ class Status(Base):
     __table_args__ = {'useexisting': True}
 
     id = Column(Integer, primary_key=True)
-    provider = Column(String)
-    status = Column(String)
+    provider = Column(String(length=64))
+    status = Column(String(length=32))
     update_time = Column(DateTime)
 
     user = relationship(User, backref=backref('statuses'), order_by=id)

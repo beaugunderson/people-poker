@@ -36,14 +36,14 @@ class EventHandler(pyinotify.ProcessEvent):
                 if match:
                     door_code = match.group('door_code')
 
-                    id, name, guid = user_id_from_door_code(self.ldap_settings,
+                    id, guid, name = user_id_from_door_code(self.ldap_settings,
                             door_code)
 
                     self.socket.connect(self.door_settings["server_uri"])
                     self.socket.send_json({
                         'user_id': id,
-                        'user_name': name,
                         'user_guid': guid,
+                        'user_name': name,
                         'provider': 'door-code',
                         'time': dt.now().isoformat()
                     })
@@ -96,7 +96,7 @@ def user_id_from_door_code(settings, door_code):
     for dn, user in r:
         guid = ''.join(['%02X' % ord(c) for c in user['objectGUID'][0]])
 
-        return (user['sAMAccountName'][0], user['cn'][0], guid)
+        return (user['sAMAccountName'][0], guid, user['cn'][0])
 
 
 @plac.annotations(

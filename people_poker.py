@@ -5,15 +5,17 @@ import imp
 import itertools
 import logging
 import os
+import plac
 import pkgutil
 import sys
 import time
 import threading
 
 # XXX For debugging
-from IPython.Shell import IPShellEmbed; ipshell = IPShellEmbed()
+#from IPython.Shell import IPShellEmbed; ipshell = IPShellEmbed()
 
 from collections import defaultdict
+from configobj import ConfigObj
 from datetime import datetime as dt
 from pprint import pformat
 
@@ -29,7 +31,7 @@ from spp.provider import Provider
 class PeoplePoker(object):
     threads = []
 
-    def __init__(self):
+    def __init__(self, configuration=""):
         super(PeoplePoker, self).__init__()
 
         # TODO Push logging setup into a config file
@@ -59,8 +61,12 @@ class PeoplePoker(object):
                 [provider.__class__.__name__ for provider in providers]) \
                 for type, providers in self.provider_instances.iteritems()]))
 
+        parser = ConfigObj('config.ini')
+
+        db_settings = parser["database%s" % configuration]
+
         # Initialize the database connection
-        engine = create_engine('sqlite:///:memory:', echo=False)
+        engine = create_engine(db_settings["server_uri"], echo=False)
 
         Base.metadata.create_all(engine)
 
@@ -243,15 +249,25 @@ class PeoplePoker(object):
         error_log.close()
         output_log.close()
 
+@plac.annotations(
+    daemonize=("Daemonize the People Poker service", 'flag', 'd'),
+    configuration=("The configuration set to use", 'option', 'c'))
+def main(daemonize=False, configuration=""):
+    if configuration:
+        configuration = "-%s" % configuration
+
+    pp = PeoplePoker(configuration)
+
+    if daemonize:
+        pp.run_as_daemon()
+    else:
+        try:
+            pp.loop()
+        finally:
+            for thread in pp.threads:
+                print "Attempting to stop thread %s" % thread
+
+                thread.stop()
+
 if __name__ == "__main__":
-    pp = PeoplePoker()
-
-    try:
-        pp.loop()
-    finally:
-        for thread in pp.threads:
-            print "Attempting to stop thread %s" % thread
-
-            thread.stop()
-
-    sys.exit()
+    plac.call(main)
