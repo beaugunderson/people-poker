@@ -179,7 +179,9 @@ class PeoplePoker(object):
 
         # Update data from status providers
         for provider in self.provider_instances['status']:
-            for update in provider.updates:
+            while len(provider.updates):
+                update = provider.updates.popleft()
+
                 self.logger.info("Got update: %s" % update)
 
         # Update data from device providers

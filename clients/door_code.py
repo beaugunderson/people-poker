@@ -71,7 +71,7 @@ def user_id_from_door_code(settings, door_code):
 
     # Use hardcoded certificate file
     ldap.set_option(ldap.OPT_X_TLS_CACERTFILE,
-            '/usr/local/spp/certificates/root-ca.crt')
+            os.path.abspath('../certificates/root-ca.crt'))
 
     # For debugging information uncomment below
     l.set_option(ldap.OPT_DEBUG_LEVEL, 255)
