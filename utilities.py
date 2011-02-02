@@ -8,10 +8,6 @@ from spp.models import Base
 
 
 def create_db_session(settings, echo=False):
-    import pprint
-    pprint.pprint(settings)
-    pprint.pprint(echo)
-
     engine = create_engine(settings["server_uri"], echo=echo)
 
     Base.metadata.create_all(engine)
@@ -27,7 +23,7 @@ def create_ldap_connection(settings):
     l.set_option(ldap.OPT_X_TLS_DEMAND, True)
     l.set_option(ldap.OPT_REFERRALS, 0)
 
-    # Use hardcoded certificate file
+    # XXX Use hardcoded certificate file
     ldap.set_option(ldap.OPT_X_TLS_CACERTFILE,
             os.path.abspath('/usr/local/spp/certificates/root-ca.crt'))
 

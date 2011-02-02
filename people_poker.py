@@ -64,10 +64,8 @@ class PeoplePoker(object):
 
         parser = ConfigObj('config.ini')
 
-        db_settings = parser["database%s" % configuration]
-
         # Initialize the database connection
-        self.session = create_db_session(db_settings)
+        self.session = create_db_session(parser["database%s" % configuration])
 
         # Start any server providers (like the ZMQ server provider)
         for provider in self.provider_instances['server']:
@@ -126,8 +124,10 @@ class PeoplePoker(object):
         if not isinstance(time, dt):
             time = dt.strptime(time, '%Y-%m-%dT%H:%M:%S.%f')
 
+        self.logger.debug("Time: %s" % time)
+
         try:
-            status = self.session.query(Status).filter(_and(
+            status = self.session.query(Status).filter(and_(
                 Status.user == user,
                 Status.provider == provider)).one()
 
@@ -135,9 +135,14 @@ class PeoplePoker(object):
             status.status = status
             status.update_time = time
 
+            self.session.merge(status)
             self.session.commit()
-        except:
+        except Exception as e:
+            self.logger.exception(e)
+
             status = Status(provider, status, time)
+
+            status.user = user
 
             self.session.add(status)
             self.session.commit()
@@ -184,6 +189,18 @@ class PeoplePoker(object):
 
                 self.logger.info("Got update: %s" % update)
 
+                try:
+                    user = self.session.query(User).filter(
+                            User.user_id == update['user_id']).one()
+
+                    self.update_status(user, update['provider'],
+                            update['status'], update['time'])
+                except Exception as e:
+                    self.logger.error("Unable to update status: %s" \
+                            % update)
+
+                    self.logger.exception(e)
+
         # Update data from device providers
         devices = defaultdict(list)
 
@@ -204,10 +221,12 @@ class PeoplePoker(object):
 
                 if device.mac_address in devices:
                     for provider in devices[device.mac_address]:
-                        self.update_status(user, provider, 'in', dt.now())
+                        self.update_status(user, provider, 'in',
+                                dt.now())
                 else:
                     for provider in devices[device.mac_address]:
-                        self.update_status(user, provider, 'out', dt.now())
+                        self.update_status(user, provider, 'out',
+                                dt.now())
 
     def loop(self):
         """The main program loop."""

@@ -1,37 +1,36 @@
+#!/usr/bin/env python2.7
+
+import json
+import os
 import sqlalchemy
-import simplejson
+import sys
+
+from configobj import ConfigObj
+
+# XXX
+sys.path.append(os.path.abspath('..'))
+
+from spp.models import User
+from spp.utilities import create_db_session
 
 
-def query_user_status(userid):
-    """ Returns JSON output for current status of user matching userid. """
+def query_user_status(user_id):
+    """ Returns JSON output for the current statuses of a given user_id """
 
-    # Read config file
-    db = MySQLdb.connect(
-        host=self.settings['host'],
-        user=self.settings['user'],
-        passwd=self.settings['password'],
-        db=self.settings['database'])
+    parser = ConfigObj('config.ini')
 
-    cursor = db.cursor()
+    session = create_db_session(parser["database"])
 
-    cursor.execute("""
-            SELECT * FROM current_user_status
-            WHERE userid REGEXP %s
-            """,  userid)
+    try:
+        user = session.query(User).filter(User.user_id == user_id).one()
 
-    statuslist = cursor.fetchall()
-    return json_encode(statuslist)
+        import pprint
 
+        return pprint.pformat(user.statuses)
 
-def json_encode(statuslist):
-    l = []
-
-    for user, status, last_seen in statuslist:
-        l.append({"user": user,
-                  "status": status,
-                  "last_seen": last_seen.isoformat()})
-
-    return json.dumps(l)
+        #return json.dumps(user.statuses)
+    except:
+        raise
 
 if __name__ == "__main__":
-    query_user_status("peter")
+    print query_user_status("beau")

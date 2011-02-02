@@ -12,6 +12,9 @@ import zmq
 from configobj import ConfigObj
 from datetime import datetime as dt
 
+# XXX
+sys.path.append(os.path.abspath('../..'))
+
 from spp.utilities import connect_and_search_ldap
 
 
@@ -24,9 +27,7 @@ class EventHandler(pyinotify.ProcessEvent):
         self.ldap_settings = ldap_settings
         self.position = position
 
-        context = zmq.Context()
-
-        self.socket = context.socket(zmq.REQ)
+        self.context = zmq.Context()
 
     def process_IN_MODIFY(self, event):
         with open(event.pathname, "r") as f:
@@ -41,20 +42,24 @@ class EventHandler(pyinotify.ProcessEvent):
                     id, guid, name = user_id_from_door_code(self.ldap_settings,
                             door_code)
 
-                    self.socket.connect(self.door_settings["server_uri"])
-                    self.socket.send_json({
+                    print "Access granted to %s with code %s" \
+                            % (name, door_code)
+
+                    socket = self.context.socket(zmq.REQ)
+
+                    socket.connect(self.door_settings["server_uri"])
+                    socket.send_json({
                         'user_id': id,
                         'user_guid': guid,
                         'user_name': name,
+                        'status': 'in',
                         'provider': 'door-code',
                         'time': dt.now().isoformat()
                     })
 
-                    response = self.socket.recv_json()
-                    self.socket.close()
+                    response = socket.recv_json()
 
-                    print "Access granted to %s with code %s" \
-                            % (name, door_code)
+                    socket.close()
 
             self.position = f.tell()
 
