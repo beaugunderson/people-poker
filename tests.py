@@ -1,10 +1,12 @@
+import json
+
 from datetime import datetime as dt
 from pprint import pprint
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from models import Device, User, Status
+from models import ModelEncoder, Device, User, Status
 from providers.ldap_provider import LDAPProvider
 
 class TestLDAPProvider():
@@ -19,9 +21,7 @@ class TestLDAPProvider():
         l = LDAPProvider()
         l.poll()
 
-        names = [u.user_id for u in l.users]
-
-        print "Users: %s" % ', '.join(names)
+        print json.dumps(l.users, cls=ModelEncoder, indent=4)
 
         assert len(l.users) > 0
 
@@ -46,16 +46,17 @@ class TestModels():
     def test_create_user(self):
         """Create a user from arguments"""
 
-        u = User('user1', 'user1_guid', 'Jon Doe')
+        u = User('user1', 'user1_guid', 'Jon Doe', 'Jon', 'Doe', 'Department',
+                'jon@doe.com')
 
-        assert repr(u) == "<User('user1', 'user1_guid', 'Jon Doe')>"
+        assert repr(u) == "<User(None, 'user1', 'Jon Doe', 'user1_guid')>"
 
     def test_create_device(self):
         """Create a device from arguments"""
 
         d = Device('abc', 'aa:bb:cc:dd:ee')
 
-        assert repr(d) == "<Device('abc', 'aa:bb:cc:dd:ee')>"
+        assert repr(d) == "<Device(None, 'abc', 'aa:bb:cc:dd:ee')>"
 
     def test_create_status(self):
         """Create a status update from arguments"""
@@ -64,7 +65,7 @@ class TestModels():
 
         s = Status('status-provider', 'in', time)
 
-        assert repr(s) == "<Status('status-provider', 'in', '%s')>" % time
+        assert repr(s) == "<Status(None, 'status-provider', 'in', '%s')>" % time
 
     def test_device_query(self):
         """Create a device and assure that it's queryable and identitical"""
@@ -80,8 +81,8 @@ class TestModels():
 
         assert d1 == d2
 
-        assert repr(d1) == "<Device('abc', 'aa:bb:cc:dd:ee')>"
-        assert repr(d2) == "<Device('abc', 'aa:bb:cc:dd:ee')>"
+        assert repr(d1) == "<Device(1, 'abc', 'aa:bb:cc:dd:ee')>"
+        assert repr(d2) == "<Device(1, 'abc', 'aa:bb:cc:dd:ee')>"
 
     def test_device_not_exists(self):
         """Query for a non-existent device and assure that the count is 0"""
@@ -96,7 +97,8 @@ class TestModels():
     def test_relationship(self):
         """Test relationships between users, devices, and statuses"""
 
-        u = User('user1', 'user1_guid', 'Jon Doe')
+        u = User('user1', 'user1_guid', 'Jon Doe', 'Jon', 'Doe', 'Department',
+                'jon@doe.com')
         d = Device('device1', 'aa:bb:cc:dd:ee')
         s = Status('status-provider', 'in', dt.now())
 

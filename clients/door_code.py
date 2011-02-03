@@ -39,8 +39,8 @@ class EventHandler(pyinotify.ProcessEvent):
                 if match:
                     door_code = match.group('door_code')
 
-                    id, guid, name = user_id_from_door_code(self.ldap_settings,
-                            door_code)
+                    account, guid, name = account_from_door_code(
+                            self.ldap_settings, door_code)
 
                     print "Access granted to %s with code %s" \
                             % (name, door_code)
@@ -49,9 +49,9 @@ class EventHandler(pyinotify.ProcessEvent):
 
                     socket.connect(self.door_settings["server_uri"])
                     socket.send_json({
-                        'user_id': id,
-                        'user_guid': guid,
-                        'user_name': name,
+                        'account': account,
+                        'guid': guid,
+                        'name': name,
                         'status': 'in',
                         'provider': 'door-code',
                         'time': dt.now().isoformat()
@@ -64,7 +64,7 @@ class EventHandler(pyinotify.ProcessEvent):
             self.position = f.tell()
 
 
-def user_id_from_door_code(settings, door_code):
+def account_from_door_code(settings, door_code):
     query = "(&(objectCategory=person)(objectClass=user)(pinNumber=%s)" \
             "(!(userAccountControl:1.2.840.113556.1.4.803:=2))" \
             "(memberOf:1.2.840.113556.1.4.1941:=CN=Door Access,OU=" \

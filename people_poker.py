@@ -172,10 +172,10 @@ class PeoplePoker(object):
             for user in provider.users:
                 try:
                     db_user = self.session.query(User).filter(
-                            User.user_guid == user.user_guid).one()
+                            User.guid == user.guid).one()
 
-                    db_user.user_id = user.user_id
-                    db_user.user_name = user.user_name
+                    db_user.account = user.account
+                    db_user.name = user.name
 
                     self.session.commit()
                 except:
@@ -191,7 +191,7 @@ class PeoplePoker(object):
 
                 try:
                     user = self.session.query(User).filter(
-                            User.user_id == update['user_id']).one()
+                            User.account == update['account']).one()
 
                     self.update_status(user, update['provider'],
                             update['status'], update['time'])

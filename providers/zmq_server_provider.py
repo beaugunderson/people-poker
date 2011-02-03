@@ -26,7 +26,7 @@ class ZMQServerProvider(Provider, threading.Thread):
 
         self.logger.debug("Received message: %s" % message)
 
-        if 'user_id' in message:
+        if 'account' in message:
             self.updates.append(message)
 
             self.stream.send_json({'status': 'ok'})

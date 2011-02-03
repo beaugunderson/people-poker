@@ -7,28 +7,27 @@ import sys
 
 from configobj import ConfigObj
 
+from IPython.Shell import IPShellEmbed; ipshell = IPShellEmbed()
+
 # XXX
 sys.path.append(os.path.abspath('..'))
 
-from spp.models import User
+from spp.models import ModelEncoder, User, Status
 from spp.utilities import create_db_session
 
 
-def query_user_status(user_id):
-    """ Returns JSON output for the current statuses of a given user_id """
+def query_user_status(account):
+    """ Returns JSON output for the current statuses of an account """
 
     parser = ConfigObj('config.ini')
 
     session = create_db_session(parser["database"])
 
     try:
-        user = session.query(User).filter(User.user_id == user_id).one()
+        user = session.query(User).filter(
+                User.account == account).one()
 
-        import pprint
-
-        return pprint.pformat(user.statuses)
-
-        #return json.dumps(user.statuses)
+        return json.dumps(user.statuses, cls=ModelEncoder, indent=4)
     except:
         raise
 

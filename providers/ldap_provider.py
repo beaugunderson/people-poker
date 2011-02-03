@@ -2,6 +2,8 @@ import ldap
 import os
 import sys
 
+from collections import defaultdict
+
 from spp.models import User
 from spp.provider import Provider
 
@@ -24,13 +26,20 @@ class LDAPProvider(Provider):
         r = connect_and_search_ldap(self.settings,
                 self.settings['ou_to_search'],
                 "(sAMAccountName=*)",
-                ['sAMAccountName', 'cn', 'objectGUID'])
+                ['sAMAccountName', 'cn', 'objectGUID', 'manager', 'department',
+                    'givenName', 'sn', 'mail'])
 
         users = []
 
         for dn, user in r:
             guid = ''.join(['%02X' % ord(c) for c in user['objectGUID'][0]])
 
-            users.append(User(user['sAMAccountName'][0], guid, user['cn'][0]))
+            # In case a desired property is missing
+            user = defaultdict(lambda: [''], user)
+
+            users.append(User(account=user['sAMAccountName'][0], guid=guid,
+                display_name=user['cn'][0], first_name=user['givenName'][0],
+                last_name=user['sn'][0], department=user['department'][0],
+                email=user['mail'][0]))
 
         return users
