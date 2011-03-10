@@ -8,8 +8,7 @@ import os
 import plac
 import pkgutil
 import sys
-import time
-import threading
+#import threading
 
 # XXX For debugging
 #from IPython.Shell import IPShellEmbed; ipshell = IPShellEmbed()
@@ -19,11 +18,12 @@ from configobj import ConfigObj
 from datetime import datetime as dt
 from pprint import pformat
 from sqlalchemy import and_
+from time import sleep
 
 # XXX Is this a hack? If not, where's a better place for it?
 sys.path.append(os.path.abspath('..'))
 
-from spp.models import Base, User, Device, Status
+from spp.models import User, Status # Device, Base
 from spp.provider import Provider
 
 from spp.utilities import create_db_session
@@ -234,7 +234,7 @@ class PeoplePoker(object):
         while True:
             self.query_providers()
 
-            time.sleep(10)
+            sleep(10)
 
     def run_as_daemon(self):
         """Run people poker as a daemon process."""
