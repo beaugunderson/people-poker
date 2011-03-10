@@ -1,7 +1,6 @@
 #!/usr/bin/env python2.7
 
 import asyncore
-import ldap
 import os
 import plac
 import pyinotify
