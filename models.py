@@ -1,15 +1,24 @@
 from json import JSONEncoder
+from datetime import datetime
 
-from sqlalchemy import Table, Column, DateTime, Integer, String, MetaData, \
-        ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy import Column, DateTime, Integer, String, ForeignKey
+from sqlalchemy.orm import relationship, backref, class_mapper
+
+def to_dict(self):
+    for col in class_mapper(self.__class__).mapped_table.c:
+        yield (col.name, getattr(self, col.name))
 
 Base = declarative_base()
 
+Base.to_dict = to_dict
+Base.__iter__ = lambda self: self.to_dict()
 
 class ModelEncoder(JSONEncoder):
     def default(self, o):
+        if isinstance(o, datetime):
+            return o.isoformat()
+
         if hasattr(o, '__json__'):
             return o.__json__()
 
@@ -21,8 +30,9 @@ class User(Base):
     __table_args__ = {'useexisting': True}
 
     def __json__(self):
-        return {
+        properties = {
             'id': self.id,
+            'statuses': map(dict, self.statuses or []),
             'account': self.account,
             'guid': self.guid,
             'display_name': self.display_name,
@@ -31,6 +41,8 @@ class User(Base):
             'department': self.department,
             'email': self.email,
         }
+
+        return properties
 
     id = Column(Integer, primary_key=True)
 
@@ -89,15 +101,18 @@ class Status(Base):
     __table_args__ = {'useexisting': True}
 
     def __json__(self):
-        return {
-            'user': self.user,
+        properties = {
+            'user': dict(self.user or []),
             'status': self.status,
             'provider': self.provider,
-            'update_time': self.update_time.isoformat(),
+            'update_time': self.update_time,
         }
+
+        return properties
 
     id = Column(Integer, primary_key=True)
     provider = Column(String(length=64))
+    # XXX Rename to be less ambiguous
     status = Column(String(length=32))
     update_time = Column(DateTime)
 
