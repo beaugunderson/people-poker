@@ -18,6 +18,7 @@ from configobj import ConfigObj
 from datetime import datetime as dt
 from pprint import pformat
 from sqlalchemy import and_
+from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from time import sleep
 
 # XXX Is this a hack? If not, where's a better place for it?
@@ -25,9 +26,7 @@ sys.path.append(os.path.abspath('..'))
 
 from spp.models import User, Status # Device, Base
 from spp.provider import Provider
-
 from spp.utilities import create_db_session
-
 
 class PeoplePoker(object):
     threads = []
@@ -120,7 +119,7 @@ class PeoplePoker(object):
 
         return providers
 
-    def update_status(self, user, provider, status, time):
+    def update_status(self, user, provider, status_type, time):
         if not isinstance(time, dt):
             time = dt.strptime(time, '%Y-%m-%dT%H:%M:%S.%f')
 
@@ -131,16 +130,20 @@ class PeoplePoker(object):
                 Status.user == user,
                 Status.provider == provider)).one()
 
-            status.provider = provider
-            status.status = status
+            status.status = status_type
             status.update_time = time
 
             self.session.merge(status)
             self.session.commit()
-        except Exception as e:
-            self.logger.exception(e)
+        except MultipleResultsFound:
+            self.logger.debug("Multiple results found for %s, %s" % (user, provider))
 
-            status = Status(provider, status, time)
+            raise
+        except NoResultFound:
+            self.logger.debug("Status not found for %s, %s in database, adding" \
+                    % (user.display_name, provider))
+
+            status = Status(provider, status_type, time)
 
             status.user = user
 
@@ -167,18 +170,30 @@ class PeoplePoker(object):
 
         # Update data from user providers
         for provider in self.provider_instances['users']:
-            self.logger.debug("Got users: %s" % pformat(provider.users))
+            self.logger.debug("%s returned %d users" % (provider,
+                len(provider.users)))
 
             for user in provider.users:
                 try:
                     db_user = self.session.query(User).filter(
                             User.guid == user.guid).one()
 
+                    # TODO Can this be compacted?
                     db_user.account = user.account
-                    db_user.name = user.name
+                    db_user.display_name = user.display_name
+                    db_user.first_name = user.first_name
+                    db_user.last_name = user.last_name
+                    db_user.department = user.department
+                    db_user.email = user.email
 
                     self.session.commit()
-                except:
+                except MultipleResultsFound:
+                    self.logger.debug("Multiple results found for %s" % user.guid)
+
+                    raise
+                except NoResultFound:
+                    self.logger.debug("User GUID %s not found in database, adding" % user.guid)
+
                     self.session.add(user)
                     self.session.commit()
 
@@ -192,14 +207,11 @@ class PeoplePoker(object):
                 try:
                     user = self.session.query(User).filter(
                             User.account == update['account']).one()
+                except NoResultFound:
+                    continue
 
-                    self.update_status(user, update['provider'],
-                            update['status'], update['time'])
-                except Exception as e:
-                    self.logger.error("Unable to update status: %s" \
-                            % update)
-
-                    self.logger.exception(e)
+                self.update_status(user, update['provider'],
+                        update['status'], update['time'])
 
         # Update data from device providers
         devices = defaultdict(list)
@@ -210,7 +222,7 @@ class PeoplePoker(object):
 
         users = self.session.query(User)
 
-        self.logger.debug("Found users: %s" % pformat(users))
+        self.logger.debug("sql-alchemy returned %d users" % users.count())
 
         # Iterate through each user
         for user in users:

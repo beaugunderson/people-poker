@@ -11,7 +11,6 @@ from bottle import route, run, request, response, abort
 from datetime import datetime as dt
 from configobj import ConfigObj
 from sqlalchemy import and_
-from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
 from spp.models import ModelEncoder, Status, User
@@ -40,6 +39,15 @@ def get_user_index():
     users = session.query(User).all()
 
     return json_or_jsonp(users, request, response)
+
+# Get a user
+@route('/user/:username', method='GET')
+def get_user(username):
+    # TODO differentiate between a username and an ID
+    user = session.query(User).join(Status).filter(
+            User.account == username).one()
+
+    return json_or_jsonp(user, request, response)
 
 # Get a list of status updates
 @route('/status', method='GET')
@@ -90,5 +98,5 @@ def set_status(username, status_type):
 
 bottle.debug(True)
 
-#application = bottle.app()
-run(host='0.0.0.0', port=8000)
+application = bottle.app()
+#run(host='0.0.0.0', port=8000)
