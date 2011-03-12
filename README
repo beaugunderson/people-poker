@@ -1,17 +1,25 @@
-easy_install-2.7 configobj
-easy_install-2.7 nose
-easy_install-2.7 plac
-easy_install-2.7 pyasn
-easy_install-2.7 python-daemon
-easy_install-2.7 python-ldap
-easy_install-2.7 snmp
-easy_install-2.7 SqlAlchemy
+Currently to get going on Ubuntu 10.10 you'd do this:
 
+apt-get install python2.7
 apt-get install libsnmp
 apt-get install mysql-client
 apt-get install openldap
 
-# Need bleeding-edge for these
-#easy_install-2.7 pyzmq
-#apt-get install libzmq
-#apt-get install libzmq-dev
+easy_install-2.7 pip
+
+pip-2.7 install configobj		# Configuration parsing
+pip-2.7 install nose				# Unit tests
+pip-2.7 install plac				# Command line argument parsing
+pip-2.7 install python-daemon # XXX replaced by supervisor?
+pip-2.7 install python-ldap
+pip-2.7 install pyasn
+pip-2.7 install snmp
+pip-2.7 install SqlAlchemy		# SQL ORM
+pip-2.7 install bottle			# WSGI framework
+pip-2.7 install gunicorn		# WSGI server
+pip-2.7 install supervisor		# process supervisor
+
+Compile from source:
+
+- libzmq
+- pyzmq
