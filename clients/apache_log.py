@@ -30,10 +30,24 @@ class EventHandler(pyinotify.ProcessEvent):
             f.seek(self.position)
 
             for line in f:
+                #print "DEBUG: Got line %s" % line
+
                 match = self.regex.search(line)
 
                 if match:
                     username = match.group('username')
+
+                    if username == "-":
+                        continue
+
+                    print "DEBUG: Got username %s" %username
+
+                    if re.search(r"\\", username):
+                        username = re.sub(r".*\\", "", username)
+
+                    username = username.lower()
+
+                    print "DEBUG: Mogrified to %s" %username
 
                     socket = self.context.socket(zmq.REQ)
 
@@ -58,7 +72,7 @@ def main(path):
     if not path:
         path = "/var/log/apache2/intranet.access.log"
 
-        print "Using default path of %s."
+        print "Using default path of %s." % path
 
     username = re.compile(r"[^ ]+ - (?P<username>[^ ]+) \[")
     settings = ConfigObj("apache-log.ini")
