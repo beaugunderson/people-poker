@@ -21,6 +21,7 @@ parser = ConfigObj('config.ini')
 # Initialize the database connection
 session = create_db_session(parser["database"])
 
+
 def json_or_jsonp(o, request, response):
     output = json.dumps(o, cls=ModelEncoder)
 
@@ -33,12 +34,14 @@ def json_or_jsonp(o, request, response):
 
     return output
 
+
 # Get a list of users
 @route('/user', method='GET')
 def get_user_index():
     users = session.query(User).all()
 
     return json_or_jsonp(users, request, response)
+
 
 # Get a user
 @route('/user/:username', method='GET')
@@ -49,12 +52,14 @@ def get_user(username):
 
     return json_or_jsonp(user, request, response)
 
+
 # Get a list of status updates
 @route('/status', method='GET')
 def get_status_index():
     status = session.query(Status).all()
 
     return json_or_jsonp(status, request, response)
+
 
 # Get a user's status
 @route('/status/:username', method='GET')
@@ -64,6 +69,7 @@ def get_status(username):
             User.account == username).all()
 
     return json_or_jsonp(status, request, response)
+
 
 # Update a user's status
 @route('/status/:username/:status_type', method=['POST', 'PUT'])
@@ -95,6 +101,7 @@ def set_status(username, status_type):
 
         session.add(status)
         session.commit()
+
 
 bottle.debug(True)
 

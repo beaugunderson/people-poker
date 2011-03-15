@@ -24,9 +24,10 @@ from time import sleep
 # XXX Is this a hack? If not, where's a better place for it?
 sys.path.append(os.path.abspath('..'))
 
-from spp.models import User, Status # Device, Base
+from spp.models import User, Status
 from spp.provider import Provider
 from spp.utilities import create_db_session
+
 
 class PeoplePoker(object):
     threads = []
@@ -136,11 +137,12 @@ class PeoplePoker(object):
             self.session.merge(status)
             self.session.commit()
         except MultipleResultsFound:
-            self.logger.debug("Multiple results found for %s, %s" % (user, provider))
+            self.logger.debug("Multiple results found for %s, %s" % (user,
+                provider))
 
             raise
         except NoResultFound:
-            self.logger.debug("Status not found for %s, %s in database, adding" \
+            self.logger.debug("Status missing for %s, %s in database, adding" \
                     % (user.display_name, provider))
 
             status = Status(provider, status_type, time)
@@ -188,11 +190,13 @@ class PeoplePoker(object):
 
                     self.session.commit()
                 except MultipleResultsFound:
-                    self.logger.debug("Multiple results found for %s" % user.guid)
+                    self.logger.debug("Multiple results found for %s" \
+                            % user.guid)
 
                     raise
                 except NoResultFound:
-                    self.logger.debug("User GUID %s not found in database, adding" % user.guid)
+                    self.logger.debug("User %s missing in database, adding" \
+                            % user.guid)
 
                     self.session.add(user)
                     self.session.commit()
@@ -274,6 +278,7 @@ class PeoplePoker(object):
         error_log.close()
         output_log.close()
 
+
 @plac.annotations(
     daemonize=("Daemonize the People Poker service", 'flag', 'd'),
     configuration=("The configuration set to use", 'option', 'c'))
@@ -293,6 +298,7 @@ def main(daemonize=False, configuration=""):
                 print "Attempting to stop thread %s" % thread
 
                 thread.stop()
+
 
 if __name__ == "__main__":
     plac.call(main)

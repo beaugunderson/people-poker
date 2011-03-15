@@ -17,6 +17,7 @@ def create_db_session(settings, echo=False):
 
     return Session()
 
+
 def create_ldap_connection(settings):
     l = ldap.initialize(settings['server_uri'])
 
@@ -37,6 +38,7 @@ def create_ldap_connection(settings):
         settings['password'])
 
     return l
+
 
 def connect_and_search_ldap(settings, base_dn, query, attributes,
         scope=ldap.SCOPE_SUBTREE):

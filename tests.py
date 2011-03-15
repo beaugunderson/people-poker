@@ -9,6 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from models import ModelEncoder, Device, User, Status
 from providers.ldap_provider import LDAPProvider
 
+
 class TestLDAPProvider():
     """Test the LDAPProvider module"""
 
@@ -24,6 +25,7 @@ class TestLDAPProvider():
         print json.dumps(l.users, cls=ModelEncoder, indent=4)
 
         assert len(l.users) > 0
+
 
 class TestModels():
     """Test our models and SqlAlchemy functionality"""
@@ -65,7 +67,8 @@ class TestModels():
 
         s = Status('status-provider', 'in', time)
 
-        assert repr(s) == "<Status(None, 'status-provider', 'in', '%s')>" % time
+        assert repr(s) == "<Status(None, 'status-provider', 'in', '%s')>" \
+                % time
 
     def test_device_query(self):
         """Create a device and assure that it's queryable and identitical"""

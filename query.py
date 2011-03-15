@@ -2,17 +2,14 @@
 
 import json
 import os
-import sqlalchemy
 import sys
 
 from configobj import ConfigObj
 
-from IPython.Shell import IPShellEmbed; ipshell = IPShellEmbed()
-
 # XXX
 sys.path.append(os.path.abspath('..'))
 
-from spp.models import ModelEncoder, User, Status
+from spp.models import ModelEncoder, User
 from spp.utilities import create_db_session
 
 

@@ -5,14 +5,17 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, DateTime, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship, backref, class_mapper
 
+
 def to_dict(self):
     for col in class_mapper(self.__class__).mapped_table.c:
         yield (col.name, getattr(self, col.name))
+
 
 Base = declarative_base()
 
 Base.to_dict = to_dict
 Base.__iter__ = lambda self: self.to_dict()
+
 
 class ModelEncoder(JSONEncoder):
     def default(self, o):
