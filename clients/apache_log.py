@@ -14,6 +14,7 @@ from datetime import datetime as dt
 # XXX
 sys.path.append(os.path.abspath('../..'))
 
+
 class EventHandler(pyinotify.ProcessEvent):
     def __init__(self, regex, settings, position=0):
         super(pyinotify.ProcessEvent, self).__init__()
@@ -88,6 +89,7 @@ def main(path):
         asyncore.loop()
     except KeyboardInterrupt:
         pass
+
 
 if __name__ == "__main__":
     plac.call(main)

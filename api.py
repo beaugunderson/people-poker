@@ -23,6 +23,7 @@ session = create_db_session(parser["database"])
 
 
 def json_or_jsonp(o, request, response):
+    """Return json or jsonp depending on the request"""
     output = json.dumps(o, cls=ModelEncoder)
 
     if 'callback' in request.GET:
@@ -35,17 +36,17 @@ def json_or_jsonp(o, request, response):
     return output
 
 
-# Get a list of users
 @route('/user', method='GET')
 def get_user_index():
+    """Get a list of users"""
     users = session.query(User).all()
 
     return json_or_jsonp(users, request, response)
 
 
-# Get a user
 @route('/user/:username', method='GET')
 def get_user(username):
+    """Get a user"""
     # TODO differentiate between a username and an ID
     user = session.query(User).join(Status).filter(
             User.account == username).one()
@@ -53,17 +54,17 @@ def get_user(username):
     return json_or_jsonp(user, request, response)
 
 
-# Get a list of status updates
 @route('/status', method='GET')
 def get_status_index():
+    """Get a list of status updates"""
     status = session.query(Status).all()
 
     return json_or_jsonp(status, request, response)
 
 
-# Get a user's status
 @route('/status/:username', method='GET')
 def get_status(username):
+    """Get a user's status"""
     # TODO differentiate between a username and an ID
     status = session.query(Status).join(User).filter(
             User.account == username).all()
