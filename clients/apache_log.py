@@ -60,8 +60,9 @@ class EventHandler(pyinotify.ProcessEvent):
 
 
 @plac.annotations(
-    path=("Path to the log file to watch for Apache visitiors", 'option', 'p'))
-def main(path):
+    path=("Path to the log file to watch for Apache visitiors", 'option', 'p'),
+    rewind=("How many bytes to rewind the file", 'option', 'r'))
+def main(path, rewind=0):
     basepath = os.path.realpath(os.path.dirname(sys.argv[0]))
 
     print "Basepath: %s" % basepath
@@ -76,7 +77,7 @@ def main(path):
     username = re.compile(r"[^ ]+ - (?P<username>[^ ]+) \[")
     settings = ConfigObj(os.path.join(basepath, "apache-log.ini"))
 
-    position = os.path.getsize(path)
+    position = min(os.path.getsize(path) - rewind, 0)
 
     wm = pyinotify.WatchManager()
 

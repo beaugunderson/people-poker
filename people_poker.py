@@ -252,32 +252,6 @@ class PeoplePoker(object):
 
             sleep(10)
 
-    def run_as_daemon(self):
-        """Run people poker as a daemon process."""
-
-        logs = os.path.join(os.getcwd(), "logs")
-
-        try:
-            os.mkdir(logs)
-        except:
-            pass
-
-        error_log = open(os.path.join(logs, 'error.log'), 'w+')
-        output_log = open(os.path.join(logs, 'output.log'), 'w+')
-
-        with daemon.DaemonContext(stdout=output_log,
-                                  stderr=error_log,
-                                  working_directory=os.getcwd()):
-            self.loop()
-
-        # Stop any running threads
-        for thread in self.threads():
-            thread.stop()
-
-        # Clean up any open files.
-        error_log.close()
-        output_log.close()
-
 
 @plac.annotations(
     daemonize=("Daemonize the People Poker service", 'flag', 'd'),
@@ -288,16 +262,13 @@ def main(daemonize=False, configuration=""):
 
     pp = PeoplePoker(configuration)
 
-    if daemonize:
-        pp.run_as_daemon()
-    else:
-        try:
-            pp.loop()
-        finally:
-            for thread in pp.threads:
-                print "Attempting to stop thread %s" % thread
+    try:
+        pp.loop()
+    finally:
+        for thread in pp.threads:
+            print "Attempting to stop thread %s" % thread
 
-                thread.stop()
+            thread.stop()
 
 
 if __name__ == "__main__":
