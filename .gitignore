@@ -3,3 +3,4 @@
 clients/test
 logs/*
 tmp
+config.ini
