@@ -8,7 +8,7 @@ from spp.models import Base
 
 
 def create_db_session(settings, echo=False):
-    engine = create_engine(settings["server_uri"], echo=echo)
+    engine = create_engine(settings["server_uri"], echo=echo, pool_recycle=600)
 
     Base.metadata.create_all(engine)
 

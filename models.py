@@ -1,8 +1,8 @@
 from json import JSONEncoder
 from datetime import datetime
 
+from sqlalchemy import func, Column, DateTime, Integer, String, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, DateTime, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship, backref, class_mapper
 
 
@@ -43,6 +43,8 @@ class User(Base):
             'last_name': self.last_name,
             'department': self.department,
             'email': self.email,
+            'provider': self.provider,
+            'last_modified': self.last_modified,
         }
 
         return properties
@@ -56,9 +58,11 @@ class User(Base):
     last_name = Column(String(length=64))
     department = Column(String(length=64))
     email = Column(String(length=128))
+    provider = Column(String(length=64))
+    last_modified = Column(DateTime, onupdate=func.current_timestamp())
 
     def __init__(self, account, guid, display_name, first_name, last_name,
-            department, email):
+            department, email, provider):
         self.account = account
         self.guid = guid
         self.display_name = display_name
@@ -66,6 +70,7 @@ class User(Base):
         self.last_name = last_name
         self.department = department
         self.email = email
+        self.provider = provider
 
     def __repr__(self):
         return "<User(%s, '%s', '%s', '%s')>" % (self.id, self.account,
@@ -81,11 +86,14 @@ class Device(Base):
             'user': self.user,
             'name': self.name,
             'mac_address': self.mac_address,
+            'last_modified': self.last_modified,
         }
 
     id = Column(Integer, primary_key=True)
+
     name = Column(String(length=64))
     mac_address = Column(String(length=32))
+    last_modified = Column(DateTime, onupdate=func.current_timestamp())
 
     user = relationship(User, backref=backref('devices'), order_by=id)
     user_id = Column(Integer, ForeignKey('users.id'))
@@ -114,10 +122,12 @@ class Status(Base):
         return properties
 
     id = Column(Integer, primary_key=True)
+
     provider = Column(String(length=64))
     # XXX Rename to be less ambiguous
     status = Column(String(length=32))
-    update_time = Column(DateTime)
+    # XXX Rename to 'time'?
+    update_time = Column(DateTime, onupdate=func.current_timestamp())
 
     user = relationship(User, backref=backref('statuses'), order_by=id)
     user_id = Column(Integer, ForeignKey('users.id'))
