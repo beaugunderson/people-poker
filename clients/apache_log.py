@@ -61,7 +61,7 @@ class EventHandler(pyinotify.ProcessEvent):
 
 @plac.annotations(
     path=("Path to the log file to watch for Apache visitiors", 'option', 'p'),
-    rewind=("How many bytes to rewind the file", 'option', 'r'))
+    rewind=("How many bytes to rewind the file", 'option', 'r', int))
 def main(path, rewind=0):
     basepath = os.path.realpath(os.path.dirname(sys.argv[0]))
 
@@ -74,6 +74,8 @@ def main(path, rewind=0):
 
     print "Loading %s" % os.path.join(basepath, "apache-log.ini")
 
+    # TODO Add timestamp from log line for replay
+    # TODO Add check for internal IP address
     username = re.compile(r"[^ ]+ - (?P<username>[^ ]+) \[")
     settings = ConfigObj(os.path.join(basepath, "apache-log.ini"))
 
