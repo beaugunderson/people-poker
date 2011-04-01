@@ -1,6 +1,5 @@
 #!/usr/bin/env python2.7
 
-import daemon
 import imp
 import itertools
 import logging
@@ -17,7 +16,7 @@ from collections import defaultdict
 from configobj import ConfigObj
 from datetime import datetime as dt
 from pprint import pformat
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from time import sleep
 
@@ -187,6 +186,8 @@ class PeoplePoker(object):
                     db_user.last_name = user.last_name
                     db_user.department = user.department
                     db_user.email = user.email
+                    db_user.provider = provider
+                    db_user.last_modified = func.current_timestamp()
 
                     self.session.commit()
                 except MultipleResultsFound:

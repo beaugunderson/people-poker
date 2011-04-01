@@ -1,7 +1,3 @@
-import ldap
-import os
-import sys
-
 from collections import defaultdict
 
 from spp.models import User
@@ -40,6 +36,6 @@ class LDAPProvider(Provider):
             users.append(User(account=user['sAMAccountName'][0], guid=guid,
                 display_name=user['cn'][0], first_name=user['givenName'][0],
                 last_name=user['sn'][0], department=user['department'][0],
-                email=user['mail'][0]))
+                email=user['mail'][0], provider=self))
 
         return users
